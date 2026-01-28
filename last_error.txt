@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\kyoun\OneDrive\바탕 화면\안티그래비티 프로젝트\execution\verify_sheets_access.py", line 40, in main
+    file_metadata = drive_service.files().get(fileId=SPREADSHEET_ID, fields="name, mimeType").execute()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kyoun\AppData\Local\Programs\Python\Python312\Lib\site-packages\googleapiclient\_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kyoun\AppData\Local\Programs\Python\Python312\Lib\site-packages\googleapiclient\http.py", line 938, in execute
+    raise HttpError(resp, content, uri=self.uri)
+googleapiclient.errors.HttpError: <HttpError 403 when requesting https://www.googleapis.com/drive/v3/files/1Bv1iLDh_dpD5DllYUaW8KnejKBx9vajm?fields=name%2C+mimeType&alt=json returned "Google Drive API has not been used in project 542307173348 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=542307173348 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.". Details: "[{'message': 'Google Drive API has not been used in project 542307173348 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=542307173348 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.', 'domain': 'usageLimits', 'reason': 'accessNotConfigured', 'extendedHelp': 'https://console.developers.google.com'}]">

@@ -1,0 +1,416 @@
+{
+    "item_supplier_map": {
+        "영운농산": [
+            "청경채",
+            "쑥갓",
+            "알배기",
+            "깻잎",
+            "잎로메인",
+            "고수",
+            "케일",
+            "근대",
+            "청상추"
+        ],
+        "다모아버섯": [
+            "팽이",
+            "새송이",
+            "꽃느타리",
+            "맛느타리",
+            "표고버섯"
+        ],
+        "건영농산": [
+            "감자(왕특)",
+            "감자(싼왕왕)",
+            "세척당근(3L)",
+            "흙당근"
+        ],
+        "오복상회": [
+            "일자콩나물",
+            "곱슬이콩나물",
+            "숙주",
+            "굵은숙주",
+            "깐양파",
+            "피양파",
+            "맛두부",
+            "연근",
+            "깐마늘",
+            "순두부",
+            "쌀",
+            "우엉"
+        ],
+        "명진농산": [
+            "깐대파",
+            "흙대파",
+            "깐쪽파"
+        ],
+        "풍경농산": [
+            "돌미나리",
+            "미나리",
+            "부추"
+        ],
+        "나물향기": [
+            "취청오이"
+        ],
+        "태현상회": [
+            "깐양배추",
+            "양배추"
+        ],
+        "가야웰빙": [
+            "중란",
+            "특란",
+            "대란"
+        ],
+        "이모유통": [
+            "귤",
+            "바나나",
+            "토마토",
+            "레몬",
+            "과일",
+            "오렌지",
+            "애플망고",
+            "용과",
+            "파인",
+            "딸기",
+            "샤인머스켓"
+        ],
+        "초원농산": [
+            "양상추",
+            "적채"
+        ],
+        "소리농산": [
+            "청양고추(상)"
+        ],
+        "명화농산": [
+            "배추",
+            "무"
+        ],
+        "우신농산": [
+            "간마늘",
+            "고춧가루"
+        ],
+        "정복상회": [
+            "새싹",
+            "무순"
+        ],
+        "정운": [
+            "김치",
+            "포기김치"
+        ]
+    },
+    "stock_market_rules": [
+        {
+            "item_keyword": "감자",
+            "conditions": [
+                {
+                    "unit": "15kg",
+                    "store": "부엉이산장 강남점",
+                    "target": "MARKET"
+                },
+                {
+                    "unit": "10kg",
+                    "store": "부엉이산장 구월점",
+                    "target": "STOCK"
+                },
+                {
+                    "unit": "10kg",
+                    "store": "부엉이산장",
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "청양고추",
+            "conditions": [
+                {
+                    "unit": "5kg",
+                    "store": "샤브야키 분당점",
+                    "target": "MARKET"
+                },
+                {
+                    "unit": "1kg",
+                    "store": "부엉이산장 강남점",
+                    "target": "STOCK"
+                },
+                {
+                    "unit": "2kg",
+                    "store": "부엉이산장 마곡점",
+                    "target": "STOCK"
+                },
+                {
+                    "unit": "0.5kg",
+                    "store": "부엉이산장 구월점",
+                    "target": "STOCK"
+                },
+                {
+                    "unit": "0.5k",
+                    "store": "부엉이산장 구월점",
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "애호박",
+            "conditions": [
+                {
+                    "unit": "2kg",
+                    "store": "부엉이산장 마곡점",
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "팽이",
+            "conditions": [
+                {
+                    "unit": "5개",
+                    "store": "부엉이산장 마곡점",
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "세척당근",
+            "conditions": [
+                {
+                    "unit": "2kg",
+                    "store": "부엉이산장 마곡점",
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "맛느타리",
+            "conditions": [
+                {
+                    "unit": "2팩",
+                    "store": "부엉이산장 마곡점",
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "새싹",
+            "conditions": [
+                {
+                    "target": "MARKET"
+                }
+            ]
+        },
+        {
+            "item_keyword": "적채",
+            "conditions": [
+                {
+                    "target": "STOCK",
+                    "unit": "1통",
+                    "store": "선데이버거클럽"
+                }
+            ]
+        },
+        {
+            "item_keyword": "쌀",
+            "conditions": [
+                {
+                    "target": "STOCK",
+                    "unit": "1포",
+                    "store": "샤브야키 주안점"
+                }
+            ]
+        },
+        {
+            "item_keyword": "청양고추",
+            "conditions": [
+                {
+                    "unit": "5kg",
+                    "store": "샤브야키 분당점",
+                    "target": "MARKET",
+                    "convert_to": "청양고추 5kg"
+                },
+                {
+                    "unit": "5kg",
+                    "store": "동원1차",
+                    "target": "소리농산",
+                    "convert_to": "청양고추(상) 1박스"
+                },
+                {
+                    "unit": [
+                        "0.5kg",
+                        "1kg",
+                        "2kg",
+                        "0.5k",
+                        "1k",
+                        "2k"
+                    ],
+                    "target": "STOCK"
+                },
+                {
+                    "unit": "10kg",
+                    "target": "소리농산"
+                },
+                {
+                    "unit": "1박스",
+                    "target": "소리농산"
+                }
+            ]
+        },
+        {
+            "item_keyword": "감자",
+            "conditions": [
+                {
+                    "unit": "15kg",
+                    "store": "부엉이산장 강남점",
+                    "target": "MARKET",
+                    "convert_to": "감자 15kg"
+                },
+                {
+                    "unit": "10kg",
+                    "store": "부엉이산장 구월점",
+                    "target": "STOCK",
+                    "convert_to": "감자 10kg"
+                }
+            ]
+        },
+        {
+            "item_keyword": "새싹",
+            "conditions": [
+                {
+                    "store": "샤브야키 주안점",
+                    "target": "MARKET"
+                }
+            ]
+        },
+        {
+            "item_keyword": "팽이",
+            "conditions": [
+                {
+                    "unit": [
+                        "개",
+                        "봉",
+                        "팩",
+                        "5개"
+                    ],
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "세척당근",
+            "conditions": [
+                {
+                    "unit": [
+                        "kg",
+                        "2kg"
+                    ],
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "맛느타리",
+            "conditions": [
+                {
+                    "unit": [
+                        "팩",
+                        "2팩"
+                    ],
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "애호박",
+            "conditions": [
+                {
+                    "unit": [
+                        "kg",
+                        "2kg"
+                    ],
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "쌀",
+            "conditions": [
+                {
+                    "unit": [
+                        "포"
+                    ],
+                    "target": "STOCK"
+                }
+            ]
+        },
+        {
+            "item_keyword": "적채",
+            "conditions": [
+                {
+                    "unit": [
+                        "통",
+                        "1통"
+                    ],
+                    "target": "STOCK"
+                }
+            ]
+        }
+    ],
+    "page_config": {
+        "default": {
+            "page1": [
+                "고른햇살",
+                "선데이",
+                "압구정점",
+                "부엉이산장 강남점",
+                "부엉이산장 마곡점",
+                "샤브야키 주안점",
+                "부엉이산장 구월점"
+            ],
+            "page2": [
+                "하남점",
+                "샤브야키 분당점",
+                "샤브야키 동탄점",
+                "동원1차"
+            ],
+            "page3": "SUPPLIER_LIST",
+            "page4": "STOCK_MARKET_LIST"
+        },
+        "friday": {
+            "page1": [
+                "고른햇살",
+                "선데이",
+                "압구정점",
+                "부엉이산장 강남점",
+                "부엉이산장 마곡점",
+                "샤브야키 주안점",
+                "부엉이산장 구월점"
+            ],
+            "page2": [
+                "하남점",
+                "샤브야키 분당점",
+                "샤브야키 동탄점",
+                "동원1차"
+            ],
+            "page3": [],
+            "page4": "SUPPLIER_LIST",
+            "page5": "STOCK_MARKET_LIST"
+        }
+    },
+    "color_rules": {
+        "red": [
+            "세척당근",
+            "팽이",
+            "쌀",
+            "청양고추",
+            "애호박",
+            "맛느타리",
+            "고춧가루",
+            "적채",
+            "감자"
+        ],
+        "blue": [
+            "새싹",
+            "무순",
+            "감자",
+            "양상추",
+            "청양고추"
+        ]
+    }
+}
