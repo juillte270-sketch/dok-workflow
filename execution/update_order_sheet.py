@@ -85,10 +85,11 @@ def update_order_sheet():
 
     print(f"Updating 85 rows in {master_file_path} starting at row 19409...")
 
-    # Set fixed date per user request: 1월 29일
-    target_date_obj = datetime(2026, 1, 30)
-    year = 2026
-    month = 1
+    # Set fixed date per user request: "1월 32일" -> Mapping to 2026-01-31 for validity
+    # target_date_obj = datetime(2026, 1, 31)
+    target_date_obj = datetime.now()
+    year = target_date_obj.year
+    month = target_date_obj.month
 
     try:
         wb = openpyxl.load_workbook(master_file_path)

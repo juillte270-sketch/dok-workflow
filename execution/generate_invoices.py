@@ -11,7 +11,8 @@ from openpyxl.utils import range_boundaries
 # ==================== 설정 ====================
 # 날짜 설정 (기본값: 오늘)
 # TARGET_DATE = datetime.date.today()
-TARGET_DATE = datetime.date(2026, 1, 30) # Fixed for this task
+TARGET_DATE = datetime.date.today()
+# TARGET_DATE = datetime.date(2026, 1, 31) # "Jan 32" request -> Jan 31
 DATE_STR = TARGET_DATE.strftime("%Y년 %m월 %d일")
 DATE_SHORT = TARGET_DATE.strftime("%m%d")
 DATE_FILENAME = TARGET_DATE.strftime("%Y%m%d")
@@ -101,13 +102,15 @@ def find_template(store_name):
         '선데이버거클럽': '12. 선데이버거클럽',
         '육회꽃필무렵': '13. 육회꽃필무렵 송파점',
         '파라이': '14. 파라이 카이카이',
-        '소유프루트': '8. 성동 과일 클래스 소유',
+        '소유 프루트': '8. 성동 과일 클래스 소유',
         '봄날': '9. 가락 과일 클래스 봄날',
         '오레노이키루미치 하남점': r'7. 오레노이키루미치\오레노이키루미치 하남점',
         '오레노이키루미치 압구정점': r'7. 오레노이키루미치\오레노이키루미치 압구정점',
         '부엉이산장 강남점': r'5. 부엉이 산장\1. 부엉이산장 강남점',
         '부엉이산장 구월점': r'5. 부엉이 산장\2. 부엉이산장 구월점',
         '부엉이산장 마곡점': r'5. 부엉이 산장\3. 부엉이산장 마곡점',
+        '샤브야키 도봉점': '0. 샤브야키 도봉점',
+        '이너프유': '0. 이너프유',
         # 필요한 경우 추가 매핑
     }
     
@@ -130,14 +133,16 @@ def find_template(store_name):
 
     full_path = os.path.join(DRIVE_ROOT, target_folder)
     
+    # Prioritize "AI참고용" template in the store folder (recursive)
+    # Search extensively
+    for root, dirs, files in os.walk(full_path):
+        for f in files:
+            if "AI참고용" in f and f.endswith(".xlsx") and not f.startswith("~$"):
+                print(f"  [Info] Found AI Reference Template: {f}")
+                return os.path.join(root, f)
+
     # 2. 연도/월 폴더 찾기 (e.g., "2026년 1월")
-    # 2. 연도/월 폴더 찾기
     # 다양한 포맷 시도
-    # - 2026년 1월 (분당점)
-    # - 26년1월 (주안점)
-    # - 2026년 01월
-    # - 26년 01월
-    
     y = TARGET_DATE.year
     yy = y % 100
     m = TARGET_DATE.month
@@ -227,11 +232,33 @@ def create_invoice(store_name, items):
     # 4, 2 might be store name (B4)
     safe_set_value(sheet, 4, 2, store_name)
     
-    # Clear existing items
-    # Assume items start at row 16, end at 32 (17 rows)
+    # Template capacity detection
+    # Assume items start at row 16
     start_row = 16
-    max_rows = 17 # typical max for one page
     
+    # Scan for Footer ("합계") to determine max capacity
+    footer_row_initial = -1
+    scan_limit = 100
+    for r in range(start_row, start_row + scan_limit):
+        # Check cols 2 to 10
+        found = False
+        for c_idx in range(2, 11):
+            val = sheet.cell(row=r, column=c_idx).value
+            if val and isinstance(val, str) and ("합계" in val or "계" == val.strip()):
+                footer_row_initial = r
+                found = True
+                break
+        if found:
+            break
+            
+    if footer_row_initial != -1:
+        max_rows = footer_row_initial - start_row
+        print(f"  [Info] Detected template capacity: {max_rows} rows (Footer at {footer_row_initial})")
+    else:
+        max_rows = 17 # Fallback
+        print(f"  [Warning] Could not detect footer. Using default capacity: {max_rows}")
+    
+    # Clear existing items within range
     for r in range(start_row, start_row + max_rows):
         safe_set_value(sheet, r, 2, None) # 품목
         safe_set_value(sheet, r, 4, None) # 단위
@@ -241,26 +268,202 @@ def create_invoice(store_name, items):
         safe_set_value(sheet, r, 11, None) # 금액
         safe_set_value(sheet, r, 12, None) # 비고
         
-    # Fill items
+    # Style definitions
+    thin_side = Side(style='thin')
+    border_all = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    font_body = Font(name='Malgun Gothic', size=10) 
+
+    # Fill Items
+    last_item_row = start_row
     for i, (item_name, unit, qty) in enumerate(items):
         if i >= max_rows:
-            print(f"  [Warning] Too many items for {store_name} ({len(items)}). Truncating.")
+            print(f"  [Warning] Too many items for {store_name} ({len(items)}). Truncating at 17.")
             break
             
         row = start_row + i
+        last_item_row = row
+        
+        # Values
         safe_set_value(sheet, row, 2, item_name)
         safe_set_value(sheet, row, 4, unit)
         safe_set_value(sheet, row, 5, qty)
         safe_set_value(sheet, row, 6, get_origin(item_name))
         
-        # Formula for Amount (Qty * Price). Price is Col J (10), Amount is Col K (11)
-        # =E16*J16
-        sheet.cell(row=row, column=11).value = f"=E{row}*J{row}"
+        # Value: Supply Price (Col 11) -> 0
+        sheet.cell(row=row, column=11).value = 0
         
-    # Save
+        # No explicit styling - keep template style
+
+    # 4. Remove Empty Rows (Hide)
+    # Scan down from last_item_row + 1 to find Footer
+    footer_row = -1
+    scan_limit = 100
+    current_scan = last_item_row + 1
+    
+    while current_scan < scan_limit:
+        found_footer = False
+        # Check columns 2 to 10 for "합계"
+        for c_idx in range(2, 11):
+            val = sheet.cell(row=current_scan, column=c_idx).value
+            if val and isinstance(val, str) and ("합계" in val or "계" == val.strip()):
+                footer_row = current_scan
+                found_footer = True
+                break
+        if found_footer:
+            break
+        current_scan += 1
+        
+    if footer_row != -1:
+        # 1. Hide Empty Rows
+        rows_to_hide_start = last_item_row + 1
+        rows_to_hide_end = footer_row - 1
+        
+        if rows_to_hide_end >= rows_to_hide_start:
+            print(f"  [Info] Hiding empty rows {rows_to_hide_start} to {rows_to_hide_end}")
+            for r in range(rows_to_hide_start, rows_to_hide_end + 1):
+                sheet.row_dimensions[r].hidden = True
+        
+        # 2. Zero out Footer Amounts
+        # Target keywords
+        zero_targets = ["합계", "당월금액", "당일금액", "총사용액", "총", "입금액", "합계금액"]
+        
+        # Scan footer area (footer_row to footer_row + 10)
+        for r in range(footer_row, footer_row + 15):
+            for c in range(2, 13): # Scan cols 2 to 12
+                val = sheet.cell(row=r, column=c).value
+                if val and isinstance(val, str):
+                    # Check if cell text matches any target
+                    # Normalize text (remove spaces, colons)
+                    norm_val = val.replace(" ", "").replace(":", "").replace("-", "")
+                    
+                    is_target = False
+                    for t in zero_targets:
+                        if t in norm_val:
+                            is_target = True
+                            break
+                    
+                    if is_target:
+                        # Found a label. Now find the associated value.
+                        # Usually it's in a column to the right.
+                        # We will look for the first cell to the right that serves as a value placeholder (is numeric, empty, or formula)
+                        # But specifically for "합계", it's usually at Col 11 (Supply Price Sum).
+                        # For "당월금액" etc list, it's often adjacent.
+                        
+                        # Strategy: Set 0 to columns 4, 5, 11 if they seem reasonable, 
+                        # OR specific to the label.
+                        # Simple approach: Overwrite likely value columns in this row to 0?
+                        # No, that might kill labels.
+                        
+                        # Let's search row for coordinate of value.
+                        # Usually value is in Col 4 or Col 5 or Col 11.
+                        # Let's check typical columns.
+                        for val_col in [c+1, c+2, 4, 11]:
+                            if val_col > 12: continue
+                            # If it's not the label cell itself
+                            if val_col == c: continue
+                            
+                            # Overwrite with 0
+                            # But verify we aren't overwriting another label?
+                            # Assuming labels in Col 2. Values in Col 4.
+                            # Assuming labels in Col 9. Values in Col 11.
+                            
+                            # Just set 0 if it looks like a value slot?
+                            # (Contains number, formula, or None)
+                            v_cell = sheet.cell(row=r, column=val_col)
+                            # Force 0 for known value columns relative to typical templates
+                            # We'll just be aggressive for specific cols
+                            pass
+
+                        # Specific overrides based on typical template layout
+                        # "합계" row -> Col 11 is Total Amount
+                        if "합계" in norm_val and r == footer_row:
+                             safe_set_value(sheet, r, 11, 0)
+                        
+                        # "당월", "당일" etc usually in Col 2 label, Value in Col 4 or 5?
+                        found_val = False
+                        for search_c in range(c + 1, 13):
+                             cell_v = sheet.cell(row=r, column=search_c).value
+                             # If it has a formula (=...) or is number, overwrite
+                             # Use simple heuristic: if it looks like a value placeholder, zero it.
+                             if (cell_v and isinstance(cell_v, str) and cell_v.startswith("=")) or isinstance(cell_v, (int, float)):
+                                 try:
+                                     safe_set_value(sheet, r, search_c, 0)
+                                     found_val = True
+                                 except:
+                                     pass # Skip if readonly/weird
+                        
+                        if not found_val:
+                            # If no formula/number found, force set Col 4/5
+                            if c == 2: 
+                                safe_set_value(sheet, r, 4, 0) 
+                                safe_set_value(sheet, r, 5, 0)
+                            
+    else:
+        print(f"  [Warning] Could not find footer ('합계' etc). Skipping row hiding/zeroing.")
+
+    # Save Local
     filename = f"{DATE_FILENAME}_{store_name.replace(' ', '_')}_거래명세서.xlsx"
     output_path = os.path.join(OUTPUT_DIR, filename)
     wb.save(output_path)
+    
+    # Save to Drive (Month Folder)
+    # Drive Root for this client
+    drive_client_root = os.path.dirname(template_path)
+    
+    # Check for existing month folder to avoid duplicates
+    # Patterns: 2026년 1월, 26년 1월, 2026년1월, 26년1월, etc.
+    y = TARGET_DATE.year
+    yy = y % 100
+    m = TARGET_DATE.month
+    
+    candidate_month_folders = [
+        f"{y}년 {m}월",
+        f"{yy}년 {m}월",      # 26년 1월
+        f"{y}년{m}월",
+        f"{yy}년{m}월",
+        f"{y}년 {m:02d}월",
+        f"{yy}년 {m:02d}월"
+    ]
+    
+    target_month_folder = None
+    
+    # 1. Search for existing folder
+    for folder_name in candidate_month_folders:
+        check_path = os.path.join(drive_client_root, folder_name)
+        if os.path.exists(check_path):
+            target_month_folder = folder_name
+            print(f"  [Info] Found existing month folder: {target_month_folder}")
+            break
+            
+    # 2. If not found, default to standard "YYYY년 M월"
+    if not target_month_folder:
+        target_month_folder = f"{y}년 {m}월"
+        print(f"  [Info] Creating new month folder: {target_month_folder}")
+
+    drive_target_dir = os.path.join(drive_client_root, target_month_folder)
+    
+    try:
+        os.makedirs(drive_target_dir, exist_ok=True)
+        drive_path = os.path.join(drive_target_dir, filename)
+        shutil.copy2(output_path, drive_path)
+        print(f"  [Drive] Saved to: {drive_path}")
+    except Exception as e:
+        print(f"  [Drive Error] Could not save to {drive_target_dir}: {e}")
+    
+    # Save to Drive (Same folder as template or Client Root)
+    # The user wants it in the client folder. 
+    # If the template was found in "2026년 1월" folder, it goes there.
+    # If found in root, it goes to root.
+    drive_folder = os.path.dirname(template_path)
+    drive_path = os.path.join(drive_folder, filename)
+    try:
+        shutil.copy2(output_path, drive_path)
+        print(f"  [Drive] Saved to: {drive_path}")
+    except Exception as e:
+        print(f"  [Drive Error] Could not save to {drive_path}: {e}")
+
     return output_path
 
 # ==================== 메인 ====================
