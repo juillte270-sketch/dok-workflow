@@ -25,13 +25,13 @@ def is_cloud() -> bool:
     return True
 
 
-def _get_secrets() -> dict:
-    """Load secrets from Streamlit st.secrets (works both local .streamlit/secrets.toml and Cloud)."""
+def _get_st_secrets():
+    """Access Streamlit st.secrets directly (AttrDict, not plain dict)."""
     try:
         import streamlit as st
-        return dict(st.secrets)
+        return st.secrets
     except Exception:
-        return {}
+        return None
 
 
 def get_drive_service():
@@ -44,17 +44,11 @@ def get_drive_service():
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
-        secrets = _get_secrets()
-        sa_info = secrets.get("gcp_service_account", {})
+        secrets = _get_st_secrets()
+        if secrets is None:
+            raise ValueError("Streamlit secrets not available")
 
-        if not sa_info:
-            raise ValueError("gcp_service_account not found in Streamlit secrets")
-
-        # Convert AttrDict to plain dict if needed
-        if hasattr(sa_info, "to_dict"):
-            sa_info = sa_info.to_dict()
-        else:
-            sa_info = dict(sa_info)
+        sa_info = dict(secrets["gcp_service_account"])
 
         creds = service_account.Credentials.from_service_account_info(
             sa_info,
@@ -71,13 +65,13 @@ def get_drive_service():
 
 def get_drive_file_ids() -> dict:
     """Get configured Drive file/folder IDs from Streamlit secrets."""
-    secrets = _get_secrets()
-    drive_conf = secrets.get("drive", {})
-    if hasattr(drive_conf, "to_dict"):
-        drive_conf = drive_conf.to_dict()
-    else:
-        drive_conf = dict(drive_conf)
-    return drive_conf
+    try:
+        secrets = _get_st_secrets()
+        if secrets is None:
+            return {}
+        return dict(secrets["drive"])
+    except Exception:
+        return {}
 
 
 def download_master_file() -> str:
