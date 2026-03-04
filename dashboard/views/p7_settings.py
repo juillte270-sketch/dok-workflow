@@ -7,6 +7,7 @@ from dashboard.utils import (
     PROJECT_ROOT, STATE_DIR, LOGS_DIR, HISTORY_DIR, BACKUP_DIR,
     save_progress, DEFAULT_SETTINGS, backup_master_file, list_backups,
 )
+from dashboard.drive_service import is_cloud, check_drive_connection
 
 
 def render():
@@ -31,8 +32,33 @@ def render():
 def _render_paths():
     st.subheader("파일 경로 설정")
     settings = load_settings()
+    cloud_mode = is_cloud()
 
-    # --- 마스터 파일 선택 ---
+    # --- Cloud mode: Drive connection status ---
+    if cloud_mode:
+        st.markdown("##### Google Drive 연결 (Cloud 모드)")
+        ok, msg = check_drive_connection()
+        if ok:
+            st.success(f"Drive: {msg}")
+        else:
+            st.error(f"Drive: {msg}")
+            st.caption("Streamlit Secrets에 gcp_service_account 및 drive 섹션을 설정해주세요.")
+
+        st.divider()
+        st.markdown("##### Drive 파일 ID 설정")
+        st.caption("Streamlit Cloud > Settings > Secrets에서 관리됩니다.")
+
+        try:
+            from dashboard.drive_service import get_drive_file_ids
+            file_ids = get_drive_file_ids()
+            for key, val in file_ids.items():
+                st.text_input(key, value=val or "", disabled=True, key=f"drive_id_{key}")
+        except Exception:
+            st.info("Drive 설정이 아직 구성되지 않았습니다.")
+
+        return
+
+    # --- Local mode: file browser ---
     st.markdown("##### 마스터 파일")
 
     # 매입단가_자료 폴더에서 xlsx 파일 스캔 (현재 폴더만)
@@ -299,9 +325,14 @@ def _render_system():
     st.subheader("시스템 정보")
 
     import sys
-    c1, c2 = st.columns(2)
+    cloud_mode = is_cloud()
+    c1, c2, c3 = st.columns(3)
     c1.info(f"Python: {sys.version.split()[0]}")
     c2.info(f"프로젝트: {PROJECT_ROOT.name}")
+    if cloud_mode:
+        c3.warning("모드: Cloud")
+    else:
+        c3.success("모드: Local")
 
     # Disk usage
     st.divider()

@@ -7,7 +7,12 @@ from dashboard.utils import (
     run_script_safe, get_processed_orders_path, count_completed, append_log,
     check_prerequisites, render_stage_badge, format_elapsed,
     get_lock_info, backup_master_file, _state_path,
+    resolve_master_path, sync_master_back,
 )
+from dashboard.drive_service import is_cloud
+
+# Stages that require Selenium or local-only resources (disabled in cloud)
+CLOUD_DISABLED_STAGES = {"stage3_sikbom", "stage4_helo", "stage4_second", "stage_receipt", "stage_report"}
 
 
 def _get_receipt_dir():
@@ -107,8 +112,11 @@ def render(get_date_str, get_date_compact):
             )
 
             btn_key = f"main_run_{sid}"
+            cloud_mode = is_cloud()
             if s.get("dev"):
                 c4.button("개발중", key=btn_key, disabled=True)
+            elif cloud_mode and sid in CLOUD_DISABLED_STAGES:
+                c4.button("Cloud 미지원", key=btn_key, disabled=True)
             elif status == "running":
                 c4.button("실행중...", key=btn_key, disabled=True)
             else:
@@ -131,9 +139,9 @@ def render(get_date_str, get_date_compact):
             st.info("실행 로그가 없습니다.")
 
 
-def _get_stage_args(stage_id, date_str, settings):
+def _get_stage_args(stage_id, date_str, settings, master_override=None):
     """Build correct command-line arguments for each stage."""
-    master = settings["master_file"]
+    master = master_override or settings["master_file"]
     processed = str(get_processed_orders_path(date_str))
     orders = str(get_processed_orders_path(date_str)).replace("processed_orders_", "orders_")
 
@@ -165,6 +173,11 @@ def _run_single_stage(stage_id, date_str, settings):
     stage = STAGE_MAP[stage_id]
     script = stage["script"]
 
+    # Cloud mode: block unsupported stages
+    if is_cloud() and stage_id in CLOUD_DISABLED_STAGES:
+        st.warning(f"'{stage['name']}'은(는) Cloud 환경에서 지원되지 않습니다.")
+        return
+
     # Check concurrent execution
     lock_info = get_lock_info()
     if lock_info:
@@ -176,12 +189,15 @@ def _run_single_stage(stage_id, date_str, settings):
     if needs_master and not check_master_before_run(settings):
         return
 
+    # Resolve master path (cloud: download from Drive)
+    master_path, from_drive = resolve_master_path(settings)
+
     # Stages that modify master file get a backup
     modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill"}
     needs_backup = stage_id in modifying_stages
 
     mark_stage(stage_id, "running", date_str=date_str)
-    args = _get_stage_args(stage_id, date_str, settings)
+    args = _get_stage_args(stage_id, date_str, settings, master_override=master_path)
 
     timeout_key = {
         "stage3_sikbom": "sikbom",
@@ -197,6 +213,13 @@ def _run_single_stage(stage_id, date_str, settings):
         )
 
     if success:
+        # Cloud mode: upload modified master back to Drive
+        if from_drive and stage_id in modifying_stages:
+            try:
+                sync_master_back(master_path)
+            except Exception as e:
+                st.warning(f"Drive 업로드 실패: {e}")
+
         mark_stage(stage_id, "completed", {"elapsed": elapsed}, date_str=date_str)
         st.toast(f"✅ {stage['name']} 완료 ({format_elapsed(elapsed)})")
 
@@ -230,7 +253,17 @@ def _run_single_stage(stage_id, date_str, settings):
 def _run_batch_morning(date_str, settings):
     """Run batch: stages 1 → 2a → 2b → 3 → 3-1(sikbom)."""
     batch_stages = ["stage1", "stage2_order", "stage2_invoice", "stage3_price", "stage3_sikbom"]
+
+    # Cloud mode: skip unsupported stages
+    cloud_mode = is_cloud()
+    if cloud_mode:
+        batch_stages = [s for s in batch_stages if s not in CLOUD_DISABLED_STAGES]
+
     append_log("=== BATCH START: 일괄 실행 ===")
+
+    # Resolve master path once for the entire batch
+    master_path, from_drive = resolve_master_path(settings)
+    modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill"}
 
     progress_bar = st.progress(0, text="일괄 실행 준비 중...")
     total = len(batch_stages)
@@ -251,7 +284,7 @@ def _run_batch_morning(date_str, settings):
                 break
 
         mark_stage(sid, "running", date_str=date_str)
-        args = _get_stage_args(sid, date_str, settings)
+        args = _get_stage_args(sid, date_str, settings, master_override=master_path)
         timeout_key = {
             "stage3_sikbom": "sikbom",
             "stage5_auction": "auction",
@@ -261,6 +294,14 @@ def _run_batch_morning(date_str, settings):
         success, stdout, stderr, elapsed = run_script(stage["script"], args, timeout=timeout)
 
         if success:
+            # Cloud: sync after each modifying stage
+            if from_drive and sid in modifying_stages:
+                try:
+                    sync_master_back(master_path)
+                    # Re-download for next stage to get fresh copy
+                    master_path, from_drive = resolve_master_path(settings)
+                except Exception as e:
+                    st.warning(f"Drive 동기화 실패: {e}")
             mark_stage(sid, "completed", {"elapsed": elapsed}, date_str=date_str)
             st.toast(f"✅ {stage['name']} 완료")
         else:

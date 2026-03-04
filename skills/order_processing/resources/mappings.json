@@ -1,427 +1,1565 @@
 {
-    "item_supplier_map": {
-        "영운농산": [
-            "청경채",
-            "쑥갓",
-            "알배기",
-            "깻잎",
-            "잎로메인",
-            "고수",
-            "케일",
-            "근대",
-            "청상추"
-        ],
-        "다모아버섯": [
-            "팽이",
-            "새송이",
-            "꽃느타리",
-            "맛느타리",
-            "표고버섯"
-        ],
-        "건영농산": [
-            "감자(왕특)",
-            "감자(싼왕왕)",
-            "세척당근(3L)",
-            "흙당근"
-        ],
-        "오복상회": [
-            "일자콩나물",
-            "곱슬이콩나물",
-            "숙주",
-            "굵은숙주",
-            "깐양파",
-            "피양파",
-            "맛두부",
-            "연근",
-            "깐마늘",
-            "순두부",
-            "쌀",
-            "우엉"
-        ],
-        "명진농산": [
-            "깐대파",
-            "흙대파",
-            "깐쪽파"
-        ],
-        "풍경농산": [
-            "돌미나리",
-            "미나리",
-            "부추"
-        ],
-        "나물향기": [
-            "취청오이"
-        ],
-        "태현상회": [
-            "깐양배추",
-            "양배추"
-        ],
-        "가야웰빙": [
-            "중란",
-            "특란",
-            "대란"
-        ],
-        "이모유통": [
-            "귤",
-            "바나나",
-            "토마토",
-            "레몬",
-            "과일",
-            "오렌지",
-            "애플망고",
-            "용과",
-            "파인",
-            "딸기",
-            "샤인머스켓"
-        ],
-        "초원농산": [
-            "양상추",
-            "적채"
-        ],
-        "소리농산": [
-            "청양고추(상)"
-        ],
-        "명화농산": [
-            "배추",
-            "무"
-        ],
-        "우신농산": [
-            "간마늘",
-            "고춧가루"
-        ],
-        "정복상회": [
-            "새싹",
-            "무순"
-        ],
-        "정운": [
-            "김치",
-            "포기김치"
-        ]
-    },
-    "stock_market_rules": [
-        {
-            "item_keyword": "감자",
-            "conditions": [
-                {
-                    "unit": "15kg",
-                    "store": "부엉이산장 강남점",
-                    "target": "MARKET"
-                },
-                {
-                    "unit": "10kg",
-                    "store": "부엉이산장 구월점",
-                    "target": "STOCK"
-                },
-                {
-                    "unit": "10kg",
-                    "store": "부엉이산장",
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "청양고추",
-            "conditions": [
-                {
-                    "unit": "5kg",
-                    "store": "샤브야키 분당점",
-                    "target": "MARKET"
-                },
-                {
-                    "unit": "1kg",
-                    "store": "부엉이산장 강남점",
-                    "target": "STOCK"
-                },
-                {
-                    "unit": "2kg",
-                    "store": "부엉이산장 마곡점",
-                    "target": "STOCK"
-                },
-                {
-                    "unit": "0.5kg",
-                    "store": "부엉이산장 구월점",
-                    "target": "STOCK"
-                },
-                {
-                    "unit": "0.5k",
-                    "store": "부엉이산장 구월점",
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "애호박",
-            "conditions": [
-                {
-                    "unit": "2kg",
-                    "store": "부엉이산장 마곡점",
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "팽이",
-            "conditions": [
-                {
-                    "unit": "5개",
-                    "store": "부엉이산장 마곡점",
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "세척당근",
-            "conditions": [
-                {
-                    "unit": "2kg",
-                    "store": "부엉이산장 마곡점",
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "맛느타리",
-            "conditions": [
-                {
-                    "unit": "2팩",
-                    "store": "부엉이산장 마곡점",
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "새싹",
-            "conditions": [
-                {
-                    "target": "MARKET"
-                }
-            ]
-        },
-        {
-            "item_keyword": "적채",
-            "conditions": [
-                {
-                    "target": "STOCK",
-                    "unit": "1통",
-                    "store": "선데이버거클럽"
-                }
-            ]
-        },
-        {
-            "item_keyword": "쌀",
-            "conditions": [
-                {
-                    "target": "STOCK",
-                    "unit": "1포",
-                    "store": "샤브야키 주안점"
-                }
-            ]
-        },
-        {
-            "item_keyword": "청양고추",
-            "conditions": [
-                {
-                    "unit": "5kg",
-                    "store": "샤브야키 분당점",
-                    "target": "MARKET",
-                    "convert_to": "청양고추 5kg"
-                },
-                {
-                    "unit": "5kg",
-                    "store": "동원1차",
-                    "target": "소리농산",
-                    "convert_to": "청양고추(상) 1박스"
-                },
-                {
-                    "unit": [
-                        "0.5kg",
-                        "1kg",
-                        "2kg",
-                        "0.5k",
-                        "1k",
-                        "2k"
-                    ],
-                    "target": "STOCK"
-                },
-                {
-                    "unit": "10kg",
-                    "target": "소리농산"
-                },
-                {
-                    "unit": "1박스",
-                    "target": "소리농산"
-                }
-            ]
-        },
-        {
-            "item_keyword": "감자",
-            "conditions": [
-                {
-                    "unit": "15kg",
-                    "store": "부엉이산장 강남점",
-                    "target": "MARKET",
-                    "convert_to": "감자 15kg"
-                },
-                {
-                    "unit": "10kg",
-                    "store": "부엉이산장 구월점",
-                    "target": "STOCK",
-                    "convert_to": "감자 10kg"
-                }
-            ]
-        },
-        {
-            "item_keyword": "새싹",
-            "conditions": [
-                {
-                    "store": "샤브야키 주안점",
-                    "target": "MARKET"
-                }
-            ]
-        },
-        {
-            "item_keyword": "팽이",
-            "conditions": [
-                {
-                    "unit": [
-                        "개",
-                        "봉",
-                        "팩",
-                        "5개"
-                    ],
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "세척당근",
-            "conditions": [
-                {
-                    "unit": [
-                        "kg",
-                        "2kg"
-                    ],
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "맛느타리",
-            "conditions": [
-                {
-                    "unit": [
-                        "팩",
-                        "2팩"
-                    ],
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "애호박",
-            "conditions": [
-                {
-                    "unit": [
-                        "kg",
-                        "2kg"
-                    ],
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "쌀",
-            "conditions": [
-                {
-                    "unit": [
-                        "포"
-                    ],
-                    "target": "STOCK"
-                }
-            ]
-        },
-        {
-            "item_keyword": "적채",
-            "conditions": [
-                {
-                    "unit": [
-                        "통",
-                        "1통"
-                    ],
-                    "target": "STOCK"
-                }
-            ]
-        }
+  "item_supplier_map": {
+    "영운농산": [
+      "청경채",
+      "쑥갓",
+      "알배기",
+      "깻잎",
+      "잎로메인",
+      "통로메인",
+      "고수",
+      "케일",
+      "적근대",
+      "근대",
+      "아욱",
+      "청상추",
+      "치커리"
     ],
-    "page_config": {
-        "default": {
-            "page1": [
-                "샤브야키 도봉점",
-                "소유",
-                "육회",
-                "이너프유",
-                "고른햇살",
-                "선데이",
-                "압구정점",
-                "부엉이산장 강남점",
-                "부엉이산장 마곡점",
-                "샤브야키 주안점",
-                "부엉이산장 구월점"
-            ],
-            "page2": [
-                "브럭시",
-                "샤브야키 평택점",
-                "하남점",
-                "샤브야키 분당점",
-                "샤브야키 동탄점",
-                "동원1차"
-            ],
-            "page3": "SUPPLIER_LIST",
-            "page4": "STOCK_MARKET_LIST"
+    "다모아버섯": [
+      "팽이",
+      "새송이",
+      "꽃느타리",
+      "맛느타리",
+      "표고버섯",
+      "양송이"
+    ],
+    "건영농산": [
+      "감자(왕특)",
+      "감자(싼왕왕)",
+      "감자(왕왕)",
+      "세척당근",
+      "흙당근"
+    ],
+    "오복상회": [
+      "일자콩나물",
+      "곱슬이콩나물",
+      "숙주",
+      "굵은숙주",
+      "깐양파",
+      "피양파",
+      "맛두부",
+      "연근",
+      "냉동알마늘",
+      "순두부",
+      "쌀",
+      "우엉",
+      "간마늘",
+      "깐마늘(중)"
+    ],
+    "명진농산": [
+      "깐대파",
+      "흙대파",
+      "깐쪽파"
+    ],
+    "세연농산": [
+      "영양부추"
+    ],
+    "풍경농산": [
+      "돌미나리",
+      "미나리",
+      "부추"
+    ],
+    "나물향기": [
+      "취청오이",
+      "애호박"
+    ],
+    "태현상회": [
+      "깐양배추",
+      "양배추"
+    ],
+    "가야웰빙": [
+      "중란",
+      "특란",
+      "대란"
+    ],
+    "이모유통": [
+      "귤",
+      "바나나",
+      "토마토",
+      "레몬",
+      "과일",
+      "오렌지",
+      "애플망고",
+      "용과",
+      "파인",
+      "딸기",
+      "샤인머스켓",
+      "레드향",
+      "골드망고",
+      "오톰크리스피",
+      "망고스틴",
+      "사과",
+      "한라봉",
+      "아보카도",
+      "방토",
+      "키위",
+      "블루베리",
+      "참외"
+    ],
+    "초원농산": [
+      "양상추",
+      "적채",
+      "라디치오",
+      "샐러리"
+    ],
+    "명화농산": [
+      "배추",
+      "무"
+    ],
+    "우신농산": [
+      "간마늘",
+      "깐마늘",
+      "고춧가루"
+    ],
+    "정복상회": [
+      "새싹",
+      "무순"
+    ],
+    "백제유통": [
+      "모닝글로리",
+      "딜",
+      "샬롯"
+    ],
+    "정운": [
+      "김치",
+      "포기김치",
+      "파김치"
+    ],
+    "경북상회": [
+      "청양고추(상)",
+      "청양고추",
+      "꽈리고추(상)",
+      "꽈리고추",
+      "홍고추"
+    ]
+  },
+  "stock_market_rules": [
+    {
+      "item_keyword": "감자",
+      "conditions": [
+        {
+          "unit": [
+            "15kg",
+            "15KG"
+          ],
+          "store": "부엉이산장 강남점",
+          "target": "STOCK"
         },
-        "friday": {
-            "page1": [
-                "샤브야키 도봉점",
-                "소유",
-                "육회",
-                "이너프유",
-                "고른햇살",
-                "선데이",
-                "압구정점",
-                "부엉이산장 강남점",
-                "부엉이산장 마곡점",
-                "샤브야키 주안점",
-                "부엉이산장 구월점"
-            ],
-            "page2": [
-                "브럭시",
-                "샤브야키 평택점",
-                "하남점",
-                "샤브야키 분당점",
-                "샤브야키 동탄점",
-                "동원1차"
-            ],
-            "page3": "SUPPLIER_LIST",
-            "page4": "STOCK_MARKET_LIST"
+        {
+          "unit": [
+            "10kg",
+            "10KG"
+          ],
+          "store": "부엉이산장 구월점",
+          "target": "STOCK"
+        },
+        {
+          "unit": [
+            "10kg",
+            "10KG"
+          ],
+          "store": "부엉이산장",
+          "target": "STOCK"
         }
+      ]
     },
-    "color_rules": {
-        "red": [
-            "세척당근",
-            "팽이",
-            "쌀",
-            "청양고추",
-            "애호박",
-            "맛느타리",
-            "고춧가루",
-            "적채",
-            "감자"
-        ],
-        "blue": [
-            "새싹",
-            "무순",
-            "감자",
-            "양상추",
-            "청양고추"
-        ]
+    {
+      "item_keyword": "청양고추",
+      "conditions": [
+        {
+          "unit": "5kg",
+          "store": "샤브야키 분당점",
+          "target": "STOCK"
+        },
+        {
+          "unit": "5kg",
+          "store": "동원1차",
+          "target": "경북상회",
+          "convert_to": "청양고추(상) 1박스"
+        },
+        {
+          "unit": [
+            "0.5kg",
+            "1kg",
+            "2kg",
+            "0.5k",
+            "1k",
+            "2k",
+            "0.5KG",
+            "1KG",
+            "2KG"
+          ],
+          "target": "STOCK"
+        },
+        {
+          "unit": "10kg",
+          "target": "소리농산"
+        },
+        {
+          "unit": "1박스",
+          "target": "경북상회"
+        }
+      ]
+    },
+    {
+      "item_keyword": "매운고춧가루",
+      "conditions": [
+        {
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "참나물",
+      "conditions": [
+        {
+          "target": "MARKET"
+        }
+      ]
+    },
+    {
+      "item_keyword": "애호박",
+      "conditions": [
+        {
+          "unit": [
+            "개"
+          ],
+          "target": "STOCK"
+        },
+        {
+          "unit": [
+            "kg",
+            "KG"
+          ],
+          "target": "MARKET"
+        }
+      ]
+    },
+    {
+      "item_keyword": "팽이",
+      "conditions": [
+        {
+          "unit": [
+            "개",
+            "봉",
+            "팩"
+          ],
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "세척당근",
+      "conditions": [
+        {
+          "unit": [
+            "kg",
+            "KG"
+          ],
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "맛느타리",
+      "conditions": [
+        {
+          "unit": [
+            "팩"
+          ],
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "적채",
+      "conditions": [
+        {
+          "unit": [
+            "통"
+          ],
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "쌀",
+      "conditions": [
+        {
+          "unit": [
+            "포"
+          ],
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "양상추",
+      "conditions": [
+        {
+          "unit": [
+            "통"
+          ],
+          "store": "샤브야키 분당점",
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "꽈리고추",
+      "conditions": [
+        {
+          "unit": [
+            "0.5kg",
+            "0.5k",
+            "kg"
+          ],
+          "target": "STOCK"
+        },
+        {
+          "unit": "1박스",
+          "target": "경북상회"
+        }
+      ]
+    },
+    {
+      "item_keyword": "레몬",
+      "conditions": [
+        {
+          "unit": [
+            "개"
+          ],
+          "store": "부엉이산장 마곡점",
+          "target": "STOCK"
+        }
+      ]
+    },
+    {
+      "item_keyword": "새싹",
+      "conditions": [
+        {
+          "target": "MARKET"
+        }
+      ]
+    },
+    {
+      "item_keyword": "무순",
+      "conditions": [
+        {
+          "target": "MARKET"
+        }
+      ]
     }
+  ],
+  "page_config": {
+    "default": {
+      "page1": [
+        "봄날",
+        "송파",
+        "육회",
+        "샤브야키 도봉점",
+        "고른햇살",
+        "소유",
+        "선데이",
+        "압구정점",
+        "부엉이산장 강남점",
+        "역삼",
+        "부엉이산장 마곡점",
+        "이너프유",
+        "샤브야키 주안점",
+        "부엉이산장 구월점",
+        "샤브야키 광교점",
+        "동원1차"
+      ],
+      "page2": [
+        "샤브야키 분당점",
+        "샤브야키 평택점",
+        "샤브야키 동탄점"
+      ],
+      "page3": [
+        "브럭시",
+        "하남점",
+        "동원1차"
+      ],
+      "page4": "SUPPLIER_LIST",
+      "page5": "STOCK_MARKET_LIST"
+    },
+    "friday": {
+      "page1": [
+        "육회",
+        "샤브야키 도봉점",
+        "고른햇살",
+        "선데이",
+        "부엉이산장 마곡점",
+        "샤브야키 주안점",
+        "부엉이산장 구월점",
+        "샤브야키 평택점",
+        "동원1차"
+      ],
+      "page2": [
+        "샤브야키 분당점",
+        "샤브야키 광교점",
+        "샤브야키 동탄점"
+      ],
+      "page3": [
+        "압구정점",
+        "하남점",
+        "동원1차"
+      ],
+      "page4": "SUPPLIER_LIST",
+      "page5": "STOCK_MARKET_LIST"
+    }
+  },
+  "color_rules": {
+    "red": [
+      "세척당근",
+      "팽이",
+      "쌀",
+      "청양고추",
+      "애호박",
+      "맛느타리",
+      "고춧가루",
+      "적채",
+      "감자",
+      "참나물",
+      "매운고춧가루"
+    ],
+    "blue": [
+      "새싹",
+      "무순",
+      "감자",
+      "양상추",
+      "청양고추"
+    ]
+  },
+  "inventory_item_map": {
+    "감자": "감자(KG)",
+    "세척당근": "당근(KG)",
+    "청양고추": "고추(KG)",
+    "꽈리고추": "꽈리고추(KG)",
+    "팽이": "팽이버섯(팩)",
+    "깐마늘(대)": "마늘1kg",
+    "애호박": "애호박(개)",
+    "맛느타리": "맛느타리(팩)",
+    "적채": "적채(통)",
+    "양상추": "양상추(12수/통)",
+    "매운고춧가루": "매운 고춧가루",
+    "굵은고춧가루": "굵은 고춧가루",
+    "참나물": "참나물(kg)",
+    "레몬": "레몬(개)",
+    "새송이": "새송이(KG)",
+    "알배기": "알배기(통)",
+    "양배추": "양배추(통)",
+    "깐양배추": "양배추(통)",
+    "무": "무(통)",
+    "표고버섯": "표고버섯(KG)",
+    "취청오이": "취청오이(kg)",
+    "청경채": "청경채(KG)",
+    "깐대파": "깐대파(단)",
+    "깐쪽파": "깐쪽파(단)",
+    "김치": "김치(박스)",
+    "쌀": "쌀",
+    "골드파인애플": "골드파인애플(통)"
+  },
+  "helo_code_map": {
+    "334491": {
+      "sheet_name": "고추(KG)",
+      "convert": "weight"
+    },
+    "334467": {
+      "sheet_name": "깐양파5kg",
+      "convert": "count"
+    },
+    "335163": {
+      "sheet_name": "깐양파1kg",
+      "convert": "count"
+    },
+    "334466": {
+      "sheet_name": "깐양파10kg",
+      "convert": "count"
+    },
+    "334492": {
+      "sheet_name": "깐대파(단)",
+      "convert": "count"
+    },
+    "334525": {
+      "sheet_name": "양상추(12수/통)",
+      "convert": "count"
+    },
+    "334536": {
+      "sheet_name": "알배기(통)",
+      "convert": "count"
+    },
+    "334900": {
+      "sheet_name": "청경채(KG)",
+      "convert": "weight"
+    },
+    "334526": {
+      "sheet_name": "새송이(KG)",
+      "convert": "weight"
+    },
+    "334594": {
+      "sheet_name": "팽이버섯(팩)",
+      "convert": "count"
+    },
+    "334532": {
+      "sheet_name": "레몬(개)",
+      "convert": "count"
+    },
+    "334844": {
+      "sheet_name": "감자(KG)",
+      "convert": "weight"
+    },
+    "166989": {
+      "sheet_name": "김치(박스)",
+      "convert": "count"
+    },
+    "334527": {
+      "sheet_name": "청경채(KG)",
+      "convert": "weight"
+    },
+    "334537": {
+      "sheet_name": "표고버섯(KG)",
+      "convert": "weight"
+    },
+    "334535": {
+      "sheet_name": "무(통)",
+      "convert": "count"
+    },
+    "334528": {
+      "sheet_name": "맛느타리(개)",
+      "convert": "count"
+    },
+    "334522": {
+      "sheet_name": "취청오이(kg)",
+      "convert": "count"
+    },
+    "167383": {
+      "sheet_name": "마카로니",
+      "convert": "count"
+    },
+    "180449": {
+      "sheet_name": "아카시아청",
+      "convert": "count"
+    },
+    "334538": {
+      "sheet_name": "감자(KG)",
+      "convert": "weight"
+    },
+    "334530": {
+      "sheet_name": "맛느타리(개)",
+      "convert": "multiply",
+      "factor": 3
+    },
+    "334494": {
+      "sheet_name": "양배추(통)",
+      "convert": "multiply",
+      "factor": 3
+    },
+    "334493": {
+      "sheet_name": "당근(KG)",
+      "convert": "weight"
+    },
+    "334590": {
+      "sheet_name": null,
+      "convert": "count"
+    },
+    "334597": {
+      "sheet_name": "마늘500g",
+      "convert": "count"
+    },
+    "334598": {
+      "sheet_name": "깐쪽파(단)",
+      "convert": "multiply",
+      "factor": 0.5
+    }
+  },
+  "inventory_reorder_rules": {
+    "감자(KG)": {
+      "type": "range",
+      "min": 30,
+      "max": 40
+    },
+    "고추(KG)": {
+      "type": "range",
+      "min": 10,
+      "max": 20
+    },
+    "깐양파10kg": {
+      "type": "range",
+      "min_weekday": {
+        "sun_wed": 3,
+        "thu_fri": 4
+      },
+      "max_weekday": {
+        "sun_wed": 3,
+        "thu_fri": 4
+      }
+    },
+    "깐양파5kg": {
+      "type": "range",
+      "min_weekday": {
+        "sun_wed": 6,
+        "thu_fri": 8
+      },
+      "max_weekday": {
+        "sun_wed": 6,
+        "thu_fri": 8
+      }
+    },
+    "깐양파1kg": {
+      "type": "skip",
+      "note": "10kg/5kg에서 분리 활용"
+    },
+    "깐쪽파(단)": {
+      "type": "range",
+      "min_weekday": {
+        "sun_thu": 1,
+        "fri": 2
+      },
+      "max_weekday": {
+        "sun_thu": 1,
+        "fri": 2
+      }
+    },
+    "꽈리고추(KG)": {
+      "type": "threshold",
+      "threshold": 2,
+      "order_qty": 4
+    },
+    "맛느타리(팩)": {
+      "type": "tiered",
+      "tiers": [
+        {
+          "threshold": 10,
+          "order_qty": 20
+        },
+        {
+          "threshold": 25,
+          "order_qty": 10
+        }
+      ]
+    },
+    "당근(KG)": {
+      "type": "threshold",
+      "threshold": 10,
+      "order_qty": 10,
+      "target_range": [
+        10,
+        15
+      ]
+    },
+    "깐대파(단)": {
+      "type": "tiered",
+      "tiers": [
+        {
+          "threshold": 10,
+          "order_qty": 10
+        },
+        {
+          "threshold": 15,
+          "order_qty": 5
+        }
+      ]
+    },
+    "레몬(개)": {
+      "type": "threshold",
+      "threshold": 140,
+      "order_qty": 140
+    },
+    "마늘1kg": {
+      "type": "target",
+      "target": 3,
+      "threshold": 2
+    },
+    "마늘500g": {
+      "type": "target",
+      "target": 3,
+      "threshold": 2
+    },
+    "무(통)": {
+      "type": "threshold",
+      "threshold": 5,
+      "order_qty": 15
+    },
+    "새송이(KG)": {
+      "type": "range",
+      "min_weekday": {
+        "sun_thu": 4,
+        "fri": 6
+      },
+      "max_weekday": {
+        "sun_thu": 4,
+        "fri": 6
+      }
+    },
+    "알배기(통)": {
+      "type": "threshold",
+      "threshold": 15,
+      "order_qty": 12
+    },
+    "애호박(개)": {
+      "type": "threshold",
+      "threshold": 9,
+      "order_qty": 20
+    },
+    "양배추(통)": {
+      "type": "target",
+      "target": 18
+    },
+    "양상추(12수/통)": {
+      "type": "threshold",
+      "threshold": 24,
+      "order_qty": 12
+    },
+    "청경채(KG)": {
+      "type": "tiered",
+      "tiers": [
+        {
+          "threshold": 6,
+          "order_qty": 8
+        },
+        {
+          "threshold": 10,
+          "order_qty": 4
+        }
+      ]
+    },
+    "취청오이(kg)": {
+      "type": "threshold",
+      "threshold": 6,
+      "order_qty": 10
+    },
+    "팽이버섯(개)": {
+      "type": "special_box",
+      "box_item": "팽이(박스)",
+      "per_box": 34
+    },
+    "표고버섯(KG)": {
+      "type": "threshold",
+      "threshold": 4,
+      "order_qty": 4
+    },
+    "참나물(kg)": {
+      "type": "manual"
+    },
+    "팽이(박스)": {
+      "type": "range",
+      "min_weekday": {
+        "sun_wed": 2,
+        "thu_fri": 3
+      },
+      "max_weekday": {
+        "sun_wed": 2,
+        "thu_fri": 3
+      }
+    },
+    "딸기(3*5) 1박스": {
+      "type": "target",
+      "target": 5
+    },
+    "애망고(4K,8수)KG": {
+      "type": "target_unit",
+      "target": 44,
+      "unit": 4
+    },
+    "한라봉(10K)1알": {
+      "type": "threshold",
+      "threshold": 50,
+      "order_qty": 35
+    }
+  },
+  "supplier_names": [
+    "영운농산",
+    "다모아버섯",
+    "건영농산",
+    "오복상회",
+    "명진농산",
+    "풍경농산",
+    "나물향기",
+    "태현상회",
+    "가야웰빙",
+    "이모유통",
+    "초원농산",
+    "소리농산",
+    "명화농산",
+    "우신농산",
+    "정복상회",
+    "정운",
+    "백제유통",
+    "세연농산",
+    "현진상회",
+    "경북상회",
+    "백제상회"
+  ],
+  "inventory_alert_rules": {
+    "쌀": {
+      "threshold": 25,
+      "message": "쌀 발주 필요"
+    },
+    "마카로니": {
+      "threshold": 180,
+      "message": "마카로니 발주 필요"
+    },
+    "아카시아청": {
+      "threshold": 195,
+      "message": "아카시아청 발주 필요"
+    },
+    "매운 고춧가루": {
+      "threshold": 8,
+      "message": "매운 고춧가루 발주 필요"
+    },
+    "굵은 고춧가루": {
+      "threshold": 8,
+      "message": "굵은 고춧가루 발주 필요"
+    }
+  },
+  "reorder_config": {
+    "감자(KG)": {
+      "supplier": "건영농산",
+      "order_item": "감자(왕왕)",
+      "order_unit": "박스",
+      "per_unit_qty": 20
+    },
+    "고추(KG)": {
+      "supplier": "소리농산",
+      "order_item": "청양고추(상)",
+      "order_unit": "박스",
+      "per_unit_qty": 10
+    },
+    "꽈리고추(KG)": {
+      "supplier": "소리농산",
+      "order_item": "꽈리고추(상)",
+      "order_unit": "박스",
+      "per_unit_qty": 4
+    },
+    "당근(KG)": {
+      "supplier": "건영농산",
+      "order_item": "세척당근(3L)",
+      "order_unit": "박스",
+      "per_unit_qty": 10
+    },
+    "깐대파(단)": {
+      "supplier": "명진농산",
+      "order_item": "깐대파(대) 10kg",
+      "order_unit": "봉",
+      "per_unit_qty": 1
+    },
+    "깐쪽파(단)": {
+      "supplier": "명진농산",
+      "order_item": "깐쪽파 1kg",
+      "order_unit": "봉",
+      "per_unit_qty": 1
+    },
+    "레몬(개)": {
+      "supplier": "이모유통",
+      "order_item": "레몬",
+      "order_unit": "박스",
+      "per_unit_qty": 140
+    },
+    "마늘1kg": {
+      "supplier": "우신농산",
+      "order_item": "깐마늘(대)",
+      "order_unit": "kg",
+      "per_unit_qty": 1
+    },
+    "무(통)": {
+      "supplier": "명화농산",
+      "order_item": "무",
+      "order_unit": "박스",
+      "per_unit_qty": 15
+    },
+    "맛느타리(팩)": {
+      "supplier": "다모아버섯",
+      "order_item": "맛느타리",
+      "order_unit": "박스",
+      "per_unit_qty": 1
+    },
+    "새송이(KG)": {
+      "supplier": "다모아버섯",
+      "order_item": "새송이",
+      "order_unit": "박스",
+      "per_unit_qty": 2
+    },
+    "알배기(통)": {
+      "supplier": "영운농산",
+      "order_item": "알배기(상)",
+      "order_unit": "박스",
+      "per_unit_qty": 12
+    },
+    "애호박(개)": {
+      "supplier": "나물향기",
+      "order_item": "애호박(상)",
+      "order_unit": "박스",
+      "per_unit_qty": 20
+    },
+    "양배추(통)": {
+      "supplier": "태현상회",
+      "order_item": "양배추45",
+      "order_unit": "망",
+      "per_unit_qty": 8
+    },
+    "양상추(12수/통)": {
+      "supplier": "초원농산",
+      "order_item": "양상추",
+      "order_unit": "박스",
+      "per_unit_qty": 12
+    },
+    "청경채(KG)": {
+      "supplier": "영운농산",
+      "order_item": "청경채",
+      "order_unit": "박스",
+      "per_unit_qty": 4
+    },
+    "취청오이(kg)": {
+      "supplier": "나물향기",
+      "order_item": "취청오이(특)",
+      "order_unit": "박스",
+      "per_unit_qty": 10
+    },
+    "적채(통)": {
+      "supplier": "초원농산",
+      "order_item": "적채",
+      "order_unit": "통",
+      "per_unit_qty": 1
+    },
+    "팽이(박스)": {
+      "supplier": "다모아버섯",
+      "order_item": "팽이",
+      "order_unit": "박스",
+      "per_unit_qty": 1
+    },
+    "표고버섯(KG)": {
+      "supplier": "다모아버섯",
+      "order_item": "표고버섯2L",
+      "order_unit": "박스",
+      "per_unit_qty": 4
+    },
+    "깐양파10kg": {
+      "supplier": "오복상회",
+      "order_item": "깐양파2호 10kg",
+      "order_unit": "봉",
+      "per_unit_qty": 1
+    },
+    "깐양파5kg": {
+      "supplier": "오복상회",
+      "order_item": "깐양파2호 5kg",
+      "order_unit": "봉",
+      "per_unit_qty": 1
+    }
+  },
+  "kakao_normalize": {
+    "common": {
+      "items": {
+        "팽이버섯": "팽이",
+        "솔팽이": "팽이",
+        "느타리": "맛느타리",
+        "다진마늘": "간마늘",
+        "당근": "세척당근",
+        "3척당근": "세척당근",
+        "깻일": "깻잎(1k)",
+        "새송이버섯": "새송이",
+        "오이": "취청오이(특)",
+        "청오이": "취청오이(특)",
+        "모이": "취청오이(특)",
+        "표고": "표고버섯2L",
+        "표고버섯": "표고버섯2L",
+        "미나리": "돌미나리",
+        "새싹": "새싹(대)",
+        "무순": "무순(대)",
+        "콩나물": "곱슬이콩나물",
+        "대파": "깐대파",
+        "쪽파": "깐쪽파",
+        "깻잎": "깻잎(1k)",
+        "계란": "중란",
+        "꽈리": "돌미나리",
+        "오렌지": "귤",
+        "두부": "맛두부(3k)",
+        "양파": "깐양파",
+        "부추": "영양부추",
+        "고추": "청양고추",
+        "마늘": "깐마늘(대)",
+        "숙주나물": "숙주",
+        "맛느타리버섯": "맛느타리",
+        "간마늘": "간마늘"
+      },
+      "patterns": [
+        {
+          "pattern": "^배추 (\\d+)$",
+          "replacement": "배추 {1}망"
+        },
+        {
+          "pattern": "배추 (\\d+)박스",
+          "replacement": "배추 {1}망"
+        },
+        {
+          "pattern": "^대파 (\\d+)kg$",
+          "replacement": "깐대파 {1}kg"
+        },
+        {
+          "pattern": "쪽파 (\\d+)단",
+          "replacement": "깐쪽파 {1}kg"
+        },
+        {
+          "pattern": "마늘 (\\d+)kg",
+          "replacement": "깐마늘(대) {1}kg"
+        },
+        {
+          "pattern": "^새송이 (\\d+)$",
+          "replacement": "새송이 {1}박스"
+        },
+        {
+          "pattern": "^청경채 (\\d+)$",
+          "replacement": "청경채 {1}박스"
+        },
+        {
+          "pattern": "^숙주 (\\d+)$",
+          "replacement": "숙주 {1}박스"
+        },
+        {
+          "pattern": "^느타리 (\\d+)$",
+          "replacement": "맛느타리 {1}박스"
+        },
+        {
+          "pattern": "^맛느타리 (\\d+)$",
+          "replacement": "맛느타리 {1}박스"
+        },
+        {
+          "pattern": "^팽이 (\\d+)$",
+          "replacement": "팽이 {1}박스"
+        },
+        {
+          "pattern": "^표고버섯2L (\\d+)$",
+          "replacement": "표고버섯2L {1}박스"
+        },
+        {
+          "pattern": "^근대 (\\d+)$",
+          "replacement": "근대 {1}박스"
+        },
+        {
+          "pattern": "^케일 (\\d+)$",
+          "replacement": "케일 {1}박스"
+        },
+        {
+          "pattern": "^굵은숙주 (\\d+)$",
+          "replacement": "굵은숙주 {1}박스"
+        },
+        {
+          "pattern": "^미나리 (\\d+)$",
+          "replacement": "돌미나리 {1}박스"
+        },
+        {
+          "pattern": "^새싹 (\\d+)$",
+          "replacement": "새싹(대) {1}팩"
+        },
+        {
+          "pattern": "^깻잎\\s*(\\d+)$",
+          "replacement": "깻잎(1k) {1}박스"
+        },
+        {
+          "pattern": "^쑥갓 (\\d+)$",
+          "replacement": "쑥갓 {1}박스"
+        },
+        {
+          "pattern": "^알배기 (\\d+)$",
+          "replacement": "알배기 {1}박스"
+        },
+        {
+          "pattern": "^알마늘 (\\d+)$",
+          "replacement": "알마늘 {1}박스"
+        }
+      ]
+    },
+    "byCustomer": {
+      "샤브야키": {
+        "all": {
+          "items": {
+            "계란": "중란",
+            "깻잎": "깻잎(1k)",
+            "오이": "취청오이(특)",
+            "표고버섯": "표고버섯2L",
+            "미나리": "돌미나리",
+            "양배추": "양배추45",
+            "느타리": "꽃느타리",
+            "청양고추": "청양고추(상)",
+            "청양": "청양고추(상)",
+            "김치": "포기김치",
+            "씻은지": "씻은김치",
+            "취청오이": "취청오이(특)"
+          },
+          "patterns": [
+            {
+              "pattern": "대파 (\\d+)단",
+              "replacement": "깐대파 {calc:1*10}kg"
+            },
+            {
+              "pattern": "^대파 (\\d+)망$",
+              "replacement": "깐대파 {calc:1*10}kg"
+            },
+            {
+              "pattern": "^대파 (\\d+)$",
+              "replacement": "깐대파 {1}kg"
+            },
+            {
+              "pattern": "^양파 (\\d+)망$",
+              "replacement": "깐양파 {calc:1*10}kg"
+            },
+            {
+              "pattern": "^양파 (\\d+)$",
+              "replacement": "깐양파 {1}kg"
+            },
+            {
+              "pattern": "쪽파\\s*(\\d+)단",
+              "replacement": "깐쪽파 {1}kg"
+            },
+            {
+              "pattern": "^쪽파\\s*(\\d+)$",
+              "replacement": "깐쪽파 {1}kg"
+            },
+            {
+              "pattern": "깐마늘 (\\d+)키로",
+              "replacement": "깐마늘(대) {1}kg"
+            },
+            {
+              "pattern": "^마늘 (\\d+)$",
+              "replacement": "깐마늘(대) {1}kg"
+            },
+            {
+              "pattern": "^마늘 (\\d+)kg$",
+              "replacement": "깐마늘(대) {1}kg"
+            },
+            {
+              "pattern": "^팽이버섯\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "팽이 {1}박스"
+            },
+            {
+              "pattern": "^팽이\\s*(\\d+)\\s*(개)?$",
+              "replacement": "팽이 {1}박스"
+            },
+            {
+              "pattern": "^느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "꽃느타리 {1}박스"
+            },
+            {
+              "pattern": "^맛느타리 (\\d+)개$",
+              "replacement": "맛느타리 {1}박스"
+            },
+            {
+              "pattern": "^새송이 (\\d+)개$",
+              "replacement": "새송이 {1}박스"
+            },
+            {
+              "pattern": "^청경채 (\\d+)개$",
+              "replacement": "청경채 {1}박스"
+            },
+            {
+              "pattern": "^숙주 (\\d+)개$",
+              "replacement": "숙주 {1}박스"
+            },
+            {
+              "pattern": "^깻잎\\s*(\\d+)$",
+              "replacement": "깻잎(1k) {1}박스"
+            },
+            {
+              "pattern": "^양배추\\s*(\\d+)\\s*ea$",
+              "replacement": "양배추45 1망"
+            },
+            {
+              "pattern": "^양배추\\s*(\\d+)$",
+              "replacement": "양배추45 {1}망"
+            }
+          ]
+        },
+        "동탄점": {
+          "items": {
+            "팽이": "팽이(그린피스)",
+            "팽이버섯": "팽이(그린피스)",
+            "솔팽이": "팽이(그린피스)",
+            "느타리": "맛느타리",
+            "느타리버섯": "맛느타리",
+            "꽃느타리": "맛느타리",
+            "꽃느타리버섯": "맛느타리"
+          },
+          "patterns": [
+            {
+              "pattern": "^팽이\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "팽이(그린피스) {1}박스"
+            },
+            {
+              "pattern": "^팽이버섯\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "팽이(그린피스) {1}박스"
+            },
+            {
+              "pattern": "^느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "맛느타리 {1}박스"
+            },
+            {
+              "pattern": "^느타리버섯\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "맛느타리 {1}박스"
+            },
+            {
+              "pattern": "^꽃느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "맛느타리 {1}박스"
+            }
+          ]
+        },
+        "분당점": {
+          "items": {
+            "느타리": "맛느타리"
+          },
+          "patterns": [
+            {
+              "pattern": "^느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "맛느타리 {1}박스"
+            }
+          ]
+        },
+        "광교점": {
+          "items": {
+            "느타리": "꽃느타리",
+            "느타리버섯": "꽃느타리",
+            "맛느타리": "꽃느타리"
+          },
+          "patterns": [
+            {
+              "pattern": "^느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "꽃느타리 {1}박스"
+            },
+            {
+              "pattern": "^느타리버섯\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "꽃느타리 {1}박스"
+            },
+            {
+              "pattern": "^맛느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "꽃느타리 {1}박스"
+            },
+            {
+              "pattern": "^깐양파\\s*(\\d+)$",
+              "replacement": "깐양파 {calc:1*5}kg"
+            },
+            {
+              "pattern": "^깐양파\\s*(\\d+)\\s*봉$",
+              "replacement": "깐양파 {calc:1*5}kg"
+            },
+            {
+              "pattern": "^양파\\s*(\\d+)$",
+              "replacement": "깐양파 {calc:1*5}kg"
+            },
+            {
+              "pattern": "^깐대파\\s*(\\d+)$",
+              "replacement": "깐대파 {calc:1*5}kg"
+            },
+            {
+              "pattern": "^깐대파\\s*(\\d+)\\s*봉$",
+              "replacement": "깐대파 {calc:1*5}kg"
+            },
+            {
+              "pattern": "^대파\\s*(\\d+)$",
+              "replacement": "깐대파 {calc:1*5}kg"
+            }
+          ]
+        },
+        "도봉점": {
+          "items": {
+            "양배추": "양배추"
+          },
+          "patterns": [
+            {
+              "pattern": "^양배추\\s*(\\d+)\\s*(박스|망|개)?$",
+              "replacement": "양배추 {1}망"
+            }
+          ]
+        },
+        "주안점": {
+          "items": {
+            "느타리": "맛느타리"
+          },
+          "patterns": [
+            {
+              "pattern": "^느타리\\s*(\\d+)\\s*(박스|개)?$",
+              "replacement": "맛느타리 {1}박스"
+            },
+            {
+              "pattern": "^쌀\\s*(\\d+)\\s*$",
+              "replacement": "쌀 {1}포"
+            },
+            {
+              "pattern": "^쌀\\s*(\\d+)\\s*(박스|포)$",
+              "replacement": "쌀 {1}포"
+            }
+          ]
+        }
+      },
+      "부엉이산장": {
+        "all": {
+          "items": {
+            "깐대파": "깐대파"
+          },
+          "patterns": [
+            {
+              "pattern": "^양파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐양파 {1}kg"
+            },
+            {
+              "pattern": "^대파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐대파 {1}kg"
+            },
+            {
+              "pattern": "배추 (\\d+)kg",
+              "replacement": "배추 1통"
+            }
+          ]
+        },
+        "강남점": {
+          "items": {
+            "콩나물": "곱슬이콩나물",
+            "깐양파": "깐양파",
+            "깐대파": "깐대파"
+          },
+          "patterns": [
+            {
+              "pattern": "^감자\\s*(20|[2-9][0-9]|[1-9][0-9]{2,})\\s*kg$",
+              "replacement": "감자 {calc:1/20}박스"
+            },
+            {
+              "pattern": "^깐양파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐양파 {1}kg"
+            },
+            {
+              "pattern": "^깐대파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐대파 {1}kg"
+            }
+          ]
+        },
+        "마곡점": {
+          "items": {
+            "콩나물": "곱슬이콩나물",
+            "팽이버섯": "팽이",
+            "쪽파": "깐쪽파",
+            "깐대파": "깐대파",
+            "깐양파": "깐양파",
+            "다진마늘": "간마늘",
+            "양배추": "양배추42"
+          },
+          "patterns": [
+            {
+              "pattern": "^다진마늘\\s*(\\d+\\.?\\d*)\\s*kg$",
+              "replacement": "간마늘 {1}kg"
+            },
+            {
+              "pattern": "^깐양파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐양파 {1}kg"
+            },
+            {
+              "pattern": "^깐대파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐대파 {1}kg"
+            },
+            {
+              "pattern": "^대파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐대파 {1}kg"
+            },
+            {
+              "pattern": "^양파\\s*(\\d+\\.?\\d*)\\s*kg",
+              "replacement": "깐양파 {1}kg"
+            },
+            {
+              "pattern": "^감자\\s*20\\s*kg",
+              "replacement": "감자 1박스"
+            }
+          ]
+        },
+        "구월점": {
+          "items": {
+            "콩나물": "일자콩나물",
+            "양파": "피양파"
+          },
+          "patterns": [
+            {
+              "pattern": "^감자\\s*(\\d+\\.?\\d*)\\s*kg$",
+              "replacement": "감자(특,왕왕) {calc:1/20}박스"
+            },
+            {
+              "pattern": "피양파 30kg",
+              "replacement": "피양파 2망"
+            }
+          ]
+        }
+      },
+      "고른햇살": {
+        "all": {
+          "items": {
+            "깻잎": "깻잎(4K,큰잎)",
+            "콩나물": "일자콩나물",
+            "양파": "피양파",
+            "양배추": "깐양배추45",
+            "오이": "취청오이(특,굵은)",
+            "두부": "맛두부(3K)",
+            "당근": "세척당근(3L)",
+            "파": "흙대파"
+          },
+          "patterns": [
+            {
+              "pattern": "^깻잎\\s*(\\d+)$",
+              "replacement": "깻잎(4K,큰잎) {1}박스"
+            }
+          ]
+        }
+      },
+      "선데이버거클럽": {
+        "all": {
+          "items": {
+            "깐대파": "깐대파",
+            "양배추": "깐양배추42",
+            "완숙토마토": "완숙토마토1호",
+            "토마토": "완숙토마토1호",
+            "깐양파": "깐양파"
+          },
+          "patterns": [
+            {
+              "pattern": "완숙토마토\\s*\\d+\\s*[Kk][Gg]\\s*(\\d+)\\s*박스",
+              "replacement": "완숙토마토1호 {1}박스"
+            },
+            {
+              "pattern": "깐양파\\s*(\\d+\\s*[Kk][Gg])\\s*\\d+\\s*망",
+              "replacement": "깐양파 {1}"
+            },
+            {
+              "pattern": "고수\\s*최소발주",
+              "replacement": "고수 1단"
+            }
+          ]
+        }
+      },
+      "브럭시": {
+        "all": {
+          "items": {
+            "로메인": "통로메인",
+            "양배추": "깐양배추42"
+          }
+        }
+      },
+      "동원1차": {
+        "all": {
+          "items": {
+            "깐대파": "깐대파(대)"
+          }
+        }
+      },
+      "육회꽃필무렵": {
+        "all": {
+          "items": {
+            "콩나물": "곱슬이콩나물",
+            "양배추": "양배추45",
+            "양파": "피양파",
+            "적양배추": "적채"
+          },
+          "patterns": [
+            {
+              "pattern": "^대파 (\\d+)단$",
+              "replacement": "깐대파 {1}kg"
+            },
+            {
+              "pattern": "^대파 (\\d+)$",
+              "replacement": "깐대파 {1}kg"
+            },
+            {
+              "pattern": "^적양배추 (\\d+).+$",
+              "replacement": "적채 {1}통"
+            }
+          ]
+        }
+      },
+      "봄날": {
+        "all": {
+          "items": {
+            "콩나물": "일자콩나물",
+            "파": "흙대파",
+            "대파": "깐대파",
+            "양파": "깐양파",
+            "깻잎": "깻잎(4k,큰잎)",
+            "양배추": "깐양배추45",
+            "당근": "세척당근(3L,굵은)",
+            "오이": "취청오이(특,굵은)",
+            "표고버섯": "표고버섯2L"
+          }
+        }
+      }
+    },
+    "ocr_fixes": {
+      "생종 알마늘": "알마늘",
+      "생종알마늘": "냉동알마늘",
+      "냉동 알마늘": "냉동알마늘",
+      "청량 고추": "청양고추",
+      "청량고추": "청양고추",
+      "모이": "오이",
+      "꼿느타리": "꽃느타리",
+      "맛타리": "맛느타리",
+      "팽이 버섯": "팽이버섯",
+      "새 송이": "새송이",
+      "알마늠": "알마늘",
+      "곱슬이 콩나물": "곱슬이콩나물",
+      "곱슬 이콩나물": "곱슬이콩나물",
+      "맛 느타리": "맛느타리",
+      "꽃 느타리": "꽃느타리",
+      "돌 미나리": "돌미나리",
+      "냉동 알마늠": "냉동알마늘",
+      "미나라": "미나리",
+      "표고 버섯": "표고버섯",
+      "양매추": "양배추",
+      "숭주": "숙주",
+      "쑥갖": "쑥갓",
+      "단위": ""
+    },
+    "default_units": {
+      "배추": "망",
+      "양배추": "망",
+      "양배추45": "망",
+      "양배추42": "통",
+      "깐양배추45": "망",
+      "깐양배추42": "통",
+      "피양파": "망",
+      "새싹(대)": "팩",
+      "무순(대)": "팩",
+      "맛두부(3k)": "팩",
+      "맛두부(3K)": "팩",
+      "중란": "판",
+      "대란": "판",
+      "특란": "판",
+      "영양부추": "단",
+      "무": "통",
+      "적채": "통",
+      "양상추": "통",
+      "_default": "박스",
+      "깐양파": "kg",
+      "깐양파5kg": "kg",
+      "깐쪽파": "kg",
+      "깐대파": "kg",
+      "깐대파(대)": "kg"
+    },
+    "unit_aliases": {
+      "BOX": "박스",
+      "Box": "박스",
+      "box": "박스",
+      "EA": "개",
+      "ea": "개",
+      "Ea": "개",
+      "단위": "",
+      "Kg": "kg"
+    },
+    "noise_patterns": [
+      "부탁",
+      "감사",
+      "드립니다",
+      "해주세요",
+      "요청합니다"
+    ]
+  },
+  "receipt_config": {
+    "trigger_words": ["영수증", "매입", "정산"],
+    "url_domains": ["itanet.co.kr", "marketbom.com"],
+    "receipt_item_map_path": "skills/order_processing/resources/receipt_item_map.json",
+    "purchase_price_col": 9,
+    "handwritten_suppliers": ["영운농산", "명화농산", "태현상회"],
+    "excluded_suppliers": ["정복상회"]
+  }
 }

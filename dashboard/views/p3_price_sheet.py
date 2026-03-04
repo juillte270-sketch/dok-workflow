@@ -4,8 +4,9 @@ from pathlib import Path
 from dashboard.utils import (
     load_settings, run_script, mark_stage, get_stage_status,
     get_processed_orders_path, check_master_before_run,
-    format_elapsed, get_timeout,
+    format_elapsed, get_timeout, resolve_master_path,
 )
+from dashboard.drive_service import is_cloud
 
 
 def render(get_date_str, get_date_compact):
@@ -15,6 +16,10 @@ def render(get_date_str, get_date_compact):
     settings = load_settings()
 
     master_ok = check_master_before_run(settings)
+    cloud_mode = is_cloud()
+
+    # Resolve master path for scripts
+    master_path, from_drive = resolve_master_path(settings)
 
     st.divider()
 
@@ -40,11 +45,14 @@ def render(get_date_str, get_date_compact):
                     "create_price_sheet.py",
                     [
                         "--input", str(processed),
-                        "--master", settings["master_file"],
+                        "--master", master_path,
                         "--date", date_str,
                     ],
                 )
             if success:
+                if from_drive:
+                    from dashboard.utils import sync_master_back
+                    sync_master_back(master_path)
                 mark_stage("stage3_price", "completed", {"elapsed": elapsed}, date_str=date_str)
                 st.toast(f"✅ 단가표 생성 완료 ({format_elapsed(elapsed)})")
                 if stdout:
@@ -61,26 +69,29 @@ def render(get_date_str, get_date_compact):
         if status_sikbom == "completed":
             st.success("완료됨")
 
-        st.caption("Selenium 브라우저 자동 조회 (2~5분)")
-
-        if st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=not master_ok):
-            with st.spinner("식봄 가격 조회 중... (브라우저 자동화)"):
-                success, stdout, stderr, elapsed = run_script(
-                    "fill_sikbom_targeted.py",
-                    ["--master", settings["master_file"], "--date", date_str],
-                    timeout=get_timeout("sikbom"),
-                )
-            if success:
-                mark_stage("stage3_sikbom", "completed", {"elapsed": elapsed}, date_str=date_str)
-                st.toast(f"✅ 식봄 조회 완료 ({format_elapsed(elapsed)})")
-                if stdout:
-                    st.code(stdout[-2000:], language="text")
-            else:
-                mark_stage("stage3_sikbom", "failed", {"error": stderr[-500:]}, date_str=date_str)
-                st.error("실패")
-                st.code(stderr[-2000:], language="text")
-                if st.button("재시도", key="btn_sikbom_retry"):
-                    st.rerun()
+        if cloud_mode:
+            st.caption("Cloud 미지원 (Selenium 브라우저 필요)")
+            st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=True)
+        else:
+            st.caption("Selenium 브라우저 자동 조회 (2~5분)")
+            if st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=not master_ok):
+                with st.spinner("식봄 가격 조회 중... (브라우저 자동화)"):
+                    success, stdout, stderr, elapsed = run_script(
+                        "fill_sikbom_targeted.py",
+                        ["--master", master_path, "--date", date_str],
+                        timeout=get_timeout("sikbom"),
+                    )
+                if success:
+                    mark_stage("stage3_sikbom", "completed", {"elapsed": elapsed}, date_str=date_str)
+                    st.toast(f"✅ 식봄 조회 완료 ({format_elapsed(elapsed)})")
+                    if stdout:
+                        st.code(stdout[-2000:], language="text")
+                else:
+                    mark_stage("stage3_sikbom", "failed", {"error": stderr[-500:]}, date_str=date_str)
+                    st.error("실패")
+                    st.code(stderr[-2000:], language="text")
+                    if st.button("재시도", key="btn_sikbom_retry"):
+                        st.rerun()
 
     # === 5: Auction prices ===
     with col3:
@@ -95,10 +106,13 @@ def render(get_date_str, get_date_compact):
             with st.spinner("경매가 조회 중..."):
                 success, stdout, stderr, elapsed = run_script(
                     "fill_auction_from_api.py",
-                    ["--master", settings["master_file"], "--date", date_str],
+                    ["--master", master_path, "--date", date_str],
                     timeout=get_timeout("auction"),
                 )
             if success:
+                if from_drive:
+                    from dashboard.utils import sync_master_back
+                    sync_master_back(master_path)
                 mark_stage("stage5_auction", "completed", {"elapsed": elapsed}, date_str=date_str)
                 st.toast(f"✅ 경매가 조회 완료 ({format_elapsed(elapsed)})")
                 if stdout:
@@ -114,7 +128,7 @@ def render(get_date_str, get_date_compact):
 
     # --- Price sheet preview ---
     st.subheader("단가표 현황")
-    _show_price_preview(settings["master_file"], date_str)
+    _show_price_preview(master_path, date_str)
 
 
 @st.cache_data(ttl=30, show_spinner="단가표 로딩 중...")

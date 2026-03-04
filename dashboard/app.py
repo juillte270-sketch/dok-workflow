@@ -16,6 +16,7 @@ from dashboard.utils import (
     today_str, count_completed, load_progress, STAGES,
     load_settings, render_stage_badge,
 )
+from dashboard.drive_service import is_cloud
 
 st.set_page_config(
     page_title="DoK Workflow",
@@ -260,6 +261,17 @@ if "target_date" not in st.session_state:
 # --- Sidebar ---
 with st.sidebar:
     st.markdown("### DoK Workflow")
+    # Mode badge
+    if is_cloud():
+        st.markdown(
+            '<span style="background:#334155; color:#FBBF24; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">CLOUD</span>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<span style="background:#334155; color:#4ADE80; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">LOCAL</span>',
+            unsafe_allow_html=True,
+        )
     st.caption(f"오늘: {today_str('%Y년 %m월 %d일')}")
 
     # Global date picker (synced across all pages)

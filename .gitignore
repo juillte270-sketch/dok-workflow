@@ -4,6 +4,8 @@ credentials.json
 token.json
 kakao_token.json
 serviceAccountKey.json
+drive_service_account.json
+.streamlit/secrets.toml
 
 # === Temp / Build ===
 .tmp/

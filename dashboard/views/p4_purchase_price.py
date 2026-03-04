@@ -5,7 +5,9 @@ from dashboard.utils import (
     load_settings, run_script, mark_stage, get_stage_status,
     check_master_before_run, append_log,
     format_elapsed, STATE_DIR, PROJECT_ROOT,
+    resolve_master_path, sync_master_back,
 )
+from dashboard.drive_service import is_cloud
 import json
 import os
 
@@ -18,18 +20,26 @@ def render(get_date_str, get_date_compact):
     settings = load_settings()
 
     master_ok = check_master_before_run(settings)
+    cloud_mode = is_cloud()
+
+    # Resolve master path once
+    master_path, from_drive = resolve_master_path(settings)
 
     st.divider()
 
     # --- Receipt auto-input ---
-    _render_receipt_section(settings, date_str, master_ok)
+    if cloud_mode:
+        st.subheader("영수증 자동 입력")
+        st.info("Cloud 환경에서는 영수증 자동 입력이 지원되지 않습니다. (로컬 파일 시스템 필요)")
+    else:
+        _render_receipt_section(settings, date_str, master_ok)
 
     st.divider()
 
     # --- Editable price table ---
     st.subheader("매입가 미입력 품목")
     if master_ok:
-        _show_and_edit_prices(settings["master_file"], date_str)
+        _show_and_edit_prices(master_path, date_str, from_drive=from_drive)
     else:
         st.caption("마스터 파일 잠금 해제 후 매입가 편집 가능합니다.")
 
@@ -48,9 +58,11 @@ def render(get_date_str, get_date_compact):
             with st.spinner("매입가/판매가 계산 중..."):
                 success, stdout, stderr, elapsed = run_script(
                     "fill_prices.py",
-                    ["--date", date_str, "--master-file", settings["master_file"]],
+                    ["--date", date_str, "--master-file", master_path],
                 )
             if success:
+                if from_drive:
+                    sync_master_back(master_path)
                 mark_stage("stage7_fill", "completed", {"elapsed": elapsed}, date_str=date_str)
                 st.toast(f"판매단가 계산 완료 ({format_elapsed(elapsed)})")
                 if stdout:
@@ -64,7 +76,7 @@ def render(get_date_str, get_date_compact):
     with col2:
         st.subheader("가격 미리보기")
         if st.button("발주시트 가격 현황 조회", key="btn_preview_prices"):
-            _show_order_prices(settings["master_file"], date_str)
+            _show_order_prices(master_path, date_str)
 
 
 # ==================== 영수증 자동 입력 섹션 ====================
@@ -197,7 +209,7 @@ def _render_watcher_control(settings, date_str):
                 st.caption(".env KAKAO_DOWNLOAD_DIR 설정 필요")
 
 
-def _show_and_edit_prices(master_path, date_str):
+def _show_and_edit_prices(master_path, date_str, from_drive=False):
     """Load price sheet, show empty-price items in data_editor, allow save."""
     try:
         import openpyxl
@@ -294,7 +306,7 @@ def _show_and_edit_prices(master_path, date_str):
         col_save, col_info = st.columns([1, 2])
         with col_save:
             if st.button(f"매입가 저장 ({changes}건)", type="primary", key="btn_save_prices", disabled=changes == 0):
-                _do_save(master_path, date_str, edited, row_map)
+                _do_save(master_path, date_str, edited, row_map, from_drive=from_drive)
         with col_info:
             if changes > 0:
                 st.caption(f"변경된 {changes}건이 저장됩니다.")
@@ -312,7 +324,7 @@ def _save_edit_mapping(date_str, row_map):
         json.dump({str(k): v for k, v in row_map.items()}, f)
 
 
-def _do_save(master_path, date_str, edited_df, row_map):
+def _do_save(master_path, date_str, edited_df, row_map, from_drive=False):
     """Save edited purchase prices to master file."""
     try:
         import openpyxl
@@ -331,6 +343,9 @@ def _do_save(master_path, date_str, edited_df, row_map):
         if saved > 0:
             wb.save(str(master_path))
             append_log(f"매입가 {saved}건 저장됨 (단가시트)")
+            # Cloud mode: upload modified file back to Drive
+            if from_drive:
+                sync_master_back(master_path)
             st.success(f"매입가 {saved}건 저장 완료!")
         else:
             st.info("저장할 변경사항이 없습니다.")

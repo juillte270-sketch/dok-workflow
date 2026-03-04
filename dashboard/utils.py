@@ -11,6 +11,8 @@ import traceback
 from pathlib import Path
 from typing import Optional, Tuple
 
+from dashboard.drive_service import is_cloud
+
 # Project root (parent of dashboard/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 EXECUTION_DIR = PROJECT_ROOT / "execution"
@@ -441,6 +443,17 @@ def run_script_streaming(script_name: str, args: list = None, cwd: str = None):
 def check_master_file(settings: dict = None) -> Tuple[bool, str]:
     """Check if master file exists and is not locked by Excel."""
     s = settings or load_settings()
+
+    # Cloud mode: check via Drive API
+    if is_cloud():
+        try:
+            from dashboard.drive_service import check_drive_connection
+            ok, msg = check_drive_connection()
+            return ok, msg
+        except Exception as e:
+            return False, f"Drive 연결 확인 실패: {e}"
+
+    # Local mode: file system check
     master = s.get("master_file", "")
     if not master:
         return False, "마스터 파일 경로가 설정되지 않았습니다."
@@ -484,6 +497,34 @@ def check_master_before_run(settings: dict = None) -> bool:
     if not ok:
         st.error(f"⚠️ {msg}")
     return ok
+
+
+def resolve_master_path(settings: dict = None) -> Tuple[str, bool]:
+    """
+    Resolve master file path for current environment.
+    Returns (local_path, is_from_drive).
+    - Local mode: returns settings["master_file"] as-is
+    - Cloud mode: downloads from Drive to temp, returns temp path
+    """
+    s = settings or load_settings()
+
+    if not is_cloud():
+        return s.get("master_file", DEFAULT_MASTER), False
+
+    # Cloud mode: download from Drive
+    from dashboard.drive_service import download_master_file
+    tmp_path = download_master_file()
+    return tmp_path, True
+
+
+def sync_master_back(local_path: str):
+    """Upload master file back to Drive (only in cloud mode, no-op locally)."""
+    if not is_cloud():
+        return
+
+    from dashboard.drive_service import upload_master_file
+    upload_master_file(local_path)
+    append_log("마스터 파일 Drive 업로드 완료 (cloud sync)")
 
 
 def list_output_files(date_str: str = None, prefix: str = "") -> list:
