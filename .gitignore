@@ -1,4 +1,118 @@
-.tmp/
+# === Secrets & Credentials ===
 .env
 credentials.json
 token.json
+kakao_token.json
+serviceAccountKey.json
+
+# === Temp / Build ===
+.tmp/
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+
+# === Data (personal/business data, never commit) ===
+data/inputs/
+data/outputs/
+data/orders_today.txt
+inputs/
+
+# === Debug / Temp scripts & outputs (root level) ===
+/debug_*.py
+/debug_*.png
+/debug_*.txt
+/debug_*.html
+/debug_*.xlsx
+/analyze_*.py
+/analyze_*.txt
+/inspect_*.py
+/inspect_*.txt
+/check_*.py
+/check_*.txt
+/verify_*.py
+/list_*.py
+/get_*.py
+/find_*.py
+/generate_*.py
+/read_*.py
+/research_*.py
+/search_*.py
+/test_*.py
+/extract_*.py
+/diagnose_*.py
+/complete_*.py
+/final_*.py
+run_log*.txt
+batch_*.log
+batch_log*.txt
+error*.log
+*.log
+
+# === Root-level temp text/html/js files ===
+/*.txt
+!requirements.txt
+!README.txt
+/*.html
+/search_bundle.js
+
+# === Generated outputs / screenshots ===
+*.png
+*.jpg
+!dashboard/**/*.png
+!brand_logo/**
+foodspring_*.json
+garak_*.json
+helo_*.json
+store_*.json
+api_*.xml
+auction_*.csv
+
+# === Temp master / xlsx ===
+temp_master.xlsx
+debug_output.xlsx
+
+# === One-off execution scripts & data ===
+execution/cleanup_*.py
+execution/detailed_*.py
+execution/dump_*.py
+execution/move_*.py
+execution/quick_*.py
+execution/batch_log_*.py
+execution/orders_*.txt
+execution/debug_*.py
+execution/debug_*.png
+execution/check_*.py
+execution/inspect_*.py
+execution/diagnose_*.py
+execution/test_*.py
+execution/extract_*.py
+execution/generate_owl_*.py
+skills/order_processing/resources/store_products_summary.txt
+skills/order_processing/resources/store_products.json
+skills/order_processing/resources/store_products_clean.json
+
+# === Dashboard state & backups (local runtime only) ===
+dashboard/state/
+dashboard/logs/
+dashboard/history/
+dashboard/backups/
+dashboard/.streamlit/
+
+# === Delivery app (separate project) ===
+delivery-app/
+
+# === Claude Code local config ===
+.claude/plans/
+.claude/settings.local.json
+
+# === OS / IDE ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# === Large generated docs ===
+거래명세서_자동화_가이드.md
+DASHBOARD.md
+TASKS_THREADS.md

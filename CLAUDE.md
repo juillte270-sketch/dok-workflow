@@ -66,6 +66,20 @@ Before writing a script, check `execution/` per your directive. Only create new 
 Directives are living documents. When you discover API constraints, better approaches, common errors, or timing expectations—update the directive. But don't create or overwrite directives without asking unless explicitly told to. Directives are your instruction set and must be preserved (and improved upon over time, not extemporaneously used and then discarded).
 
 
+## Development Workflow (시스템 개발 프로세스)
+
+시스템을 개발/수정할 때는 4단계 프로세스를 따른다.
+(일상 운영 작업에는 적용하지 않음)
+
+1. **Research** — 관련 코드/디렉티브를 깊이 읽고 `plans/` 에 리서치 파일 작성
+2. **Plan** — 상세 구현 계획을 `plans/` 에 작성 (코드 스니펫, 대안 비교, 테스트 계획 포함)
+3. **Annotate** — 사용자가 plan.md를 검토하고 인라인 메모 추가, 합의까지 반복
+4. **Implement** — 승인 후 기계적 실행. 계획에 없는 변경 발견 시 즉시 중단.
+
+핵심: 사용자가 "구현해"라고 말하기 전까지 코드를 작성하지 않는다.
+상세: `directives/workflow_dev_process.md` | 스킬: `/dev-plan`
+
+
 ## Self-annealing loop
 
 
@@ -99,6 +113,8 @@ Errors are learning opportunities. When something breaks:
 - `execution/` - Python scripts (the deterministic tools)
 
 - `directives/` - SOPs in Markdown (the instruction set)
+
+- `plans/` - Research and plan files for system development (persistent project artifacts)
 
 - `.env` - Environment variables and API keys
 

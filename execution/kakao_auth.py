@@ -45,7 +45,7 @@ def home():
             f"client_id={KAKAO_REST_API_KEY}&"
             f"redirect_uri={REDIRECT_URI}&"
             f"response_type=code&"
-            f"scope=talk_message"
+            f"scope=talk_message,friends"
         )
         return redirect(kakao_login_url)
 
