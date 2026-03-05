@@ -244,6 +244,133 @@ def search_file_in_folder(folder_id: str, name_contains: str) -> list:
     return results.get("files", [])
 
 
+# --------------- Progress Sync (Cloud ↔ Local) ---------------
+import json as _json
+import time as _time
+
+PROGRESS_LOCAL_DRIVE = Path(
+    r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단가_자료\dashboard_progress"
+)
+_progress_folder_id = None
+_progress_cache = {}  # {date_compact: (data, timestamp)}
+_PROGRESS_CACHE_TTL = 30  # seconds
+
+
+def _get_progress_folder_id() -> str:
+    """Get or create dashboard_progress folder on Drive (next to master file)."""
+    global _progress_folder_id
+    if _progress_folder_id:
+        return _progress_folder_id
+
+    service = get_drive_service()
+    file_ids = get_drive_file_ids()
+    master_id = file_ids.get("master_file_id")
+    if not master_id:
+        raise ValueError("master_file_id not configured")
+
+    meta = service.files().get(fileId=master_id, fields="parents").execute()
+    parent_id = meta.get("parents", [None])[0]
+    if not parent_id:
+        raise ValueError("Cannot determine master file parent folder")
+
+    _progress_folder_id = find_or_create_subfolder(parent_id, "dashboard_progress")
+    return _progress_folder_id
+
+
+def _upload_progress_api(date_compact: str, data: dict):
+    """Upload progress JSON via Drive API."""
+    folder_id = _get_progress_folder_id()
+    filename = f"progress_{date_compact}.json"
+    service = get_drive_service()
+
+    query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+    results = service.files().list(q=query, fields="files(id)", pageSize=1).execute()
+    existing = results.get("files", [])
+
+    tmp_path = os.path.join(tempfile.gettempdir(), filename)
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        _json.dump(data, f, ensure_ascii=False, indent=2)
+
+    from googleapiclient.http import MediaFileUpload
+    media = MediaFileUpload(tmp_path, mimetype="application/json")
+
+    if existing:
+        service.files().update(fileId=existing[0]["id"], media_body=media).execute()
+    else:
+        file_meta = {"name": filename, "parents": [folder_id]}
+        service.files().create(body=file_meta, media_body=media, fields="id").execute()
+
+
+def _download_progress_api(date_compact: str) -> dict:
+    """Download progress JSON via Drive API."""
+    try:
+        folder_id = _get_progress_folder_id()
+        filename = f"progress_{date_compact}.json"
+        service = get_drive_service()
+
+        query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+        results = service.files().list(q=query, fields="files(id)", pageSize=1).execute()
+        files = results.get("files", [])
+
+        if not files:
+            return {}
+
+        from googleapiclient.http import MediaIoBaseDownload
+        import io
+
+        request = service.files().get_media(fileId=files[0]["id"])
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+
+        buffer.seek(0)
+        return _json.loads(buffer.read().decode("utf-8"))
+    except Exception as e:
+        logger.warning(f"Progress download failed: {e}")
+        return {}
+
+
+def sync_progress_to_drive(date_compact: str, data: dict):
+    """Save progress to Drive. Local: file system, Cloud: API."""
+    try:
+        if not is_cloud():
+            PROGRESS_LOCAL_DRIVE.mkdir(parents=True, exist_ok=True)
+            p = PROGRESS_LOCAL_DRIVE / f"progress_{date_compact}.json"
+            with open(p, "w", encoding="utf-8") as f:
+                _json.dump(data, f, ensure_ascii=False, indent=2)
+        else:
+            _upload_progress_api(date_compact, data)
+            _progress_cache[date_compact] = (data, _time.time())
+    except Exception as e:
+        logger.warning(f"Progress sync to Drive failed: {e}")
+
+
+def load_progress_from_drive(date_compact: str) -> dict:
+    """Load progress from Drive. Local: file system, Cloud: API with cache."""
+    try:
+        if not is_cloud():
+            p = PROGRESS_LOCAL_DRIVE / f"progress_{date_compact}.json"
+            if p.exists():
+                with open(p, "r", encoding="utf-8") as f:
+                    return _json.load(f)
+            return {}
+        else:
+            now = _time.time()
+            if date_compact in _progress_cache:
+                cached_data, cached_ts = _progress_cache[date_compact]
+                if now - cached_ts < _PROGRESS_CACHE_TTL:
+                    return cached_data
+
+            data = _download_progress_api(date_compact)
+            _progress_cache[date_compact] = (data, now)
+            return data
+    except Exception as e:
+        logger.warning(f"Progress load from Drive failed: {e}")
+        return {}
+
+
 def check_drive_connection() -> tuple:
     """Test Drive API connection. Returns (ok: bool, message: str)."""
     if not is_cloud():

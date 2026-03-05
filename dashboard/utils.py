@@ -234,20 +234,63 @@ def _state_path(date_str: str = None) -> Path:
 
 
 def load_progress(date_str: str = None) -> dict:
+    """Load progress, merging local state dir and Drive-synced source."""
+    ds = date_to_compact(date_str) if date_str else today_compact()
+
+    # Load from local state dir
+    local_data = {}
     p = _state_path(date_str)
     if p.exists():
         try:
             with open(p, "r", encoding="utf-8") as f:
-                return json.load(f)
+                local_data = json.load(f)
         except (json.JSONDecodeError, Exception):
-            return {}
-    return {}
+            pass
+
+    # Load from Drive
+    drive_data = {}
+    try:
+        from dashboard.drive_service import load_progress_from_drive
+        drive_data = load_progress_from_drive(ds)
+    except Exception:
+        pass
+
+    if not drive_data:
+        return local_data
+    if not local_data:
+        return drive_data
+
+    # Merge: per stage, newer timestamp wins
+    merged = {}
+    for key in set(local_data.keys()) | set(drive_data.keys()):
+        local_entry = local_data.get(key, {})
+        drive_entry = drive_data.get(key, {})
+        if not local_entry:
+            merged[key] = drive_entry
+        elif not drive_entry:
+            merged[key] = local_entry
+        else:
+            local_ts = local_entry.get("timestamp", "")
+            drive_ts = drive_entry.get("timestamp", "")
+            merged[key] = drive_entry if drive_ts >= local_ts else local_entry
+    return merged
 
 
 def save_progress(progress: dict, date_str: str = None):
+    """Save progress locally and sync to Drive."""
+    ds = date_to_compact(date_str) if date_str else today_compact()
+
+    # Save to local state dir
     p = _state_path(date_str)
     with open(p, "w", encoding="utf-8") as f:
         json.dump(progress, f, ensure_ascii=False, indent=2)
+
+    # Sync to Drive (best-effort)
+    try:
+        from dashboard.drive_service import sync_progress_to_drive
+        sync_progress_to_drive(ds, progress)
+    except Exception:
+        pass
 
 
 def mark_stage(stage_id: str, status: str = "completed", extra: dict = None, date_str: str = None):
