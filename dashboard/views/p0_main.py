@@ -111,20 +111,32 @@ def _render_inner(get_date_str, get_date_compact):
         st.query_params.clear()
         _run_single_stage(run_target, date_str, settings)
 
-    # === Header: compact metrics ===
+    # === Header: metrics + Drive status (ONE HTML block) ===
     completed = count_completed(date_str)
     total = len(STAGES)
     failed = sum(1 for v in progress.values() if isinstance(v, dict) and v.get("status") == "failed")
     waiting = total - completed - failed
 
-    # === Master file selector ===
+    # Drive/Master status (inline)
+    drive_html = ""
     try:
-        _render_master_selector(settings)
+        cloud_mode = is_cloud()
+        if cloud_mode:
+            from dashboard.drive_service import check_drive_connection
+            ok, msg = check_drive_connection()
+            short = msg.split("(")[0].strip() if ok else msg
+            color = "#4ADE80" if ok else "#F87171"
+            drive_html = f'<div style="font-size:0.72rem;color:#64748B;margin-bottom:2px">{short}</div>'
+        else:
+            from pathlib import Path
+            master = settings.get("master_file", "")
+            mname = Path(master).name if master else ""
+            if mname:
+                drive_html = f'<div style="font-size:0.72rem;color:#64748B;margin-bottom:2px">{mname}</div>'
     except Exception:
         pass
 
-    # === Stage list — ONE HTML block (same as working screenshot) ===
-    # "대기" 자리에 <a> 링크로 "실행" 버튼 대체
+    # === Stage list — ONE HTML block ===
     rows_html = ""
     for s in STAGES:
         sid = s["id"]
@@ -138,7 +150,12 @@ def _render_inner(get_date_str, get_date_compact):
         # Status dot + right-side action
         if status == "completed":
             dot = "background:#4ADE80"
-            right_html = f'<span style="color:#4ADE80;font-size:0.8rem">완료 {ts_short}</span>'
+            right_html = (
+                f'<span style="color:#4ADE80;font-size:0.8rem">완료 {ts_short}</span>'
+                f'&nbsp;<a href="?run={sid}" target="_self" '
+                f'style="color:#64748B;font-size:0.7rem;text-decoration:none;'
+                f'padding:1px 5px;border:1px solid #475569;border-radius:3px">재</a>'
+            )
             bg = "background:rgba(74,222,128,0.04);"
         elif status == "failed":
             dot = "background:#F87171"
@@ -177,6 +194,7 @@ def _render_inner(get_date_str, get_date_compact):
         )
 
     st.markdown(
+        f'{drive_html}'
         f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">'
         f'<b style="font-size:1rem;flex:1">업무 현황</b>'
         f'<span style="font-size:0.75rem">'
