@@ -104,11 +104,77 @@ def _render_inner(get_date_str, get_date_compact):
     settings = load_settings()
     progress = load_progress(date_str)
 
-    # === Header: compact metrics (pure HTML, one line) ===
+    # === Handle stage execution triggered by HTML link click ===
+    params = st.query_params
+    run_target = params.get("run")
+    if run_target and run_target in STAGE_MAP:
+        st.query_params.clear()
+        _run_single_stage(run_target, date_str, settings)
+
+    # === Header: compact metrics ===
     completed = count_completed(date_str)
     total = len(STAGES)
     failed = sum(1 for v in progress.values() if isinstance(v, dict) and v.get("status") == "failed")
     waiting = total - completed - failed
+
+    # === Master file selector ===
+    try:
+        _render_master_selector(settings)
+    except Exception:
+        pass
+
+    # === Stage list — ONE HTML block (same as working screenshot) ===
+    # "대기" 자리에 <a> 링크로 "실행" 버튼 대체
+    rows_html = ""
+    for s in STAGES:
+        sid = s["id"]
+        info = progress.get(sid, {})
+        status = info.get("status", "pending")
+        sub = s.get("sub", "")
+        sub_html = f' <span style="color:#64748B;font-size:0.7rem">{sub}</span>' if sub else ""
+        ts = info.get("timestamp", "")
+        ts_short = ts[11:16] if len(ts) > 16 else ""
+
+        # Status dot + right-side action
+        if status == "completed":
+            dot = "background:#4ADE80"
+            right_html = f'<span style="color:#4ADE80;font-size:0.8rem">완료 {ts_short}</span>'
+            bg = "background:rgba(74,222,128,0.04);"
+        elif status == "failed":
+            dot = "background:#F87171"
+            right_html = (
+                f'<a href="?run={sid}" target="_self" '
+                f'style="color:#F87171;font-size:0.8rem;text-decoration:none;'
+                f'padding:2px 8px;border:1px solid #F87171;border-radius:4px">재시도</a>'
+            )
+            bg = "background:rgba(248,113,113,0.04);"
+        elif status == "running":
+            dot = "background:#FBBF24;animation:pulse 1.5s ease-in-out infinite"
+            right_html = '<span style="color:#FBBF24;font-size:0.8rem">실행중</span>'
+            bg = "background:rgba(251,191,36,0.04);"
+        elif s.get("dev"):
+            dot = "background:#475569"
+            right_html = '<span style="color:#64748B;font-size:0.75rem">개발중</span>'
+            bg = ""
+        else:
+            dot = "background:#475569"
+            right_html = (
+                f'<a href="?run={sid}" target="_self" '
+                f'style="color:#818CF8;font-size:0.8rem;text-decoration:none;'
+                f'padding:2px 10px;border:1px solid #818CF8;border-radius:4px">실행</a>'
+            )
+            bg = ""
+
+        rows_html += (
+            f'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
+            f'border-bottom:1px solid #1E293B;{bg}">'
+            f'<span style="display:inline-flex;align-items:center;justify-content:center;'
+            f'width:22px;height:22px;border-radius:50%;background:#334155;'
+            f'color:#CBD5E1;font-size:0.65rem;font-weight:600;flex-shrink:0">{s["icon"]}</span>'
+            f'<span style="flex:1;font-size:0.88rem;line-height:1.3"><b>{s["name"]}</b>{sub_html}</span>'
+            f'<span style="flex-shrink:0">{right_html}</span>'
+            f'</div>'
+        )
 
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">'
@@ -117,64 +183,20 @@ def _render_inner(get_date_str, get_date_compact):
         f'<b style="color:#4ADE80">{completed}</b>/<span style="color:#64748B">{total}</span>'
         f'&nbsp; 실패 <b style="color:#F87171">{failed}</b>'
         f'&nbsp; 대기 <b style="color:#94A3B8">{waiting}</b>'
-        f'</span></div>',
+        f'</span></div>'
+        f'<div style="border:1px solid #334155;border-radius:10px;overflow:hidden;margin:4px 0">'
+        f'{rows_html}</div>',
         unsafe_allow_html=True,
     )
 
-    # === Master file selector (before stages) ===
-    try:
-        _render_master_selector(settings)
-    except Exception:
-        pass
-
-    # === Stage list — flat buttons styled like table rows ===
-    # 스크린샷의 HTML 테이블과 동일한 레이아웃, "대기" → "실행" 버튼
-    for s in STAGES:
-        sid = s["id"]
-        info = progress.get(sid, {})
-        status = info.get("status", "pending")
-        ts = info.get("timestamp", "")
-        ts_short = ts[11:16] if len(ts) > 16 else ""
-
-        # 왼쪽: 번호 + 이름, 오른쪽: 상태/액션
-        name = s["name"]
-        if status == "completed":
-            right = f"완료 {ts_short}"
-            disabled = True
-        elif status == "failed":
-            right = "재시도"
-            disabled = False
-        elif status == "running":
-            right = "실행중..."
-            disabled = True
-        elif s.get("dev"):
-            right = "개발중"
-            disabled = True
-        else:
-            right = "실행"
-            disabled = False
-
-        label = f"{s['icon']}. {name}  ·  {right}"
-        if st.button(label, key=f"run_{sid}", disabled=disabled, use_container_width=True):
-            _run_single_stage(sid, date_str, settings)
-
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):
-        if st.button("▶▶ 일괄 실행 (1→5)", type="primary", key="btn_batch_morning"):
+        if st.button("일괄 실행 (1-5)", type="primary", key="btn_batch_morning"):
             _run_batch_morning(date_str, settings)
         if st.button("카톡 요약 전송", key="btn_kakao_summary"):
             _send_kakao_summary(date_str, progress)
         if st.button("진행상황 초기화", key="btn_reset_progress"):
             _reset_progress(date_str)
-
-    # Error details (if any failed stages)
-    failed_stages = [(s, progress.get(s["id"], {})) for s in STAGES
-                     if progress.get(s["id"], {}).get("status") == "failed"]
-    for s, info in failed_stages:
-        with st.expander(f"오류: {s['name']}", expanded=False):
-            st.code(info.get("error", "")[-1500:], language="text")
-            if st.button("재시도", key=f"retry_{s['id']}"):
-                _run_single_stage(s["id"], date_str, settings)
 
     # Execution log
     with st.expander("실행 로그", expanded=False):
