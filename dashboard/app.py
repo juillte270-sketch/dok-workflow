@@ -34,8 +34,8 @@ st.set_page_config(
 st.markdown("""
 <style>
     /* === Base Layout — 토스 스타일: 넉넉한 여백 === */
+    /* padding-top은 설정하지 않음 — Streamlit 기본값이 fixed 헤더를 보상 */
     .block-container {
-        padding-top: 2.5rem;
         padding-bottom: 2rem;
         padding-left: 2rem;
         padding-right: 2rem;
@@ -252,13 +252,13 @@ st.markdown("""
 
     /* === Mobile Responsive — 768px 이하 === */
     /*
-     * 핵심 원칙:
-     * 1. padding-top 건드리지 않음 (Streamlit 헤더가 position:fixed이므로 기본값 필요)
-     * 2. st.columns + flex-wrap:nowrap 쓰지 않음 (뷰포트 넘침 유발)
-     * 3. 콘텐츠 자체를 컴팩트하게 (여백/폰트/간격 축소)
+     * Streamlit Cloud Python 3.13 + mobile 대응 원칙:
+     * 1. padding-top 건드리지 않음 (Streamlit fixed 헤더 보상용)
+     * 2. columns 가로 유지: nowrap + first-child flex:1 + last-child 고정폭
+     * 3. 넘침 방지: first-child에 overflow:hidden + text-overflow:ellipsis
      */
     @media (max-width: 768px) {
-        /* 좌우 패딩만 축소 — padding-top은 Streamlit 기본값 유지 */
+        /* 좌우 패딩만 축소 */
         .block-container {
             padding-left: 0.75rem !important;
             padding-right: 0.75rem !important;
@@ -280,11 +280,31 @@ st.markdown("""
         h2 { font-size: 1.05rem !important; }
         h3 { font-size: 0.95rem !important; }
 
+        /*
+         * Columns 가로 유지 (Streamlit은 640px 이하에서 세로 스택)
+         * - 첫번째 컬럼: 남은 공간 차지, 넘침 숨김
+         * - 마지막 컬럼: 고정 너비 (버튼용)
+         */
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.3rem !important;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="column"]:first-child {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child {
+            flex: 0 0 72px !important;
+            min-width: 0 !important;
+        }
+
         /* 버튼 — 터치 친화적 + 콤팩트 */
         .stButton > button {
-            padding: 0.4rem 0.6rem !important;
+            padding: 0.4rem 0.5rem !important;
             font-size: 0.82rem !important;
             min-height: 40px !important;
+            white-space: nowrap !important;
         }
 
         /* 탭 — 콤팩트 */
