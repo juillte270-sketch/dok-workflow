@@ -270,10 +270,13 @@ st.markdown("""
         h2 { font-size: 1.05rem !important; }
         h3 { font-size: 0.95rem !important; }
 
-        /* Column 가로 유지 (세로 스택 방지) */
+        /* Column 가로 유지 (세로 스택 방지) + 균등 축소 */
         [data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
             gap: 0.3rem !important;
+        }
+        [data-testid="column"] {
+            min-width: 0 !important;
         }
 
         /* 요소 간 세로 간격 축소 */
@@ -283,7 +286,7 @@ st.markdown("""
 
         /* 메트릭 카드 — 초콤팩트 */
         [data-testid="stMetric"] {
-            padding: 6px 8px !important;
+            padding: 4px 6px !important;
         }
         [data-testid="stMetricValue"] {
             font-size: 1rem !important;
@@ -292,11 +295,12 @@ st.markdown("""
             font-size: 0.7rem !important;
         }
 
-        /* 버튼 — 터치 친화적 but 콤팩트 */
+        /* 버튼 — 콤팩트 + 텍스트 잘림 방지 */
         .stButton > button {
             padding: 0.3rem 0.5rem !important;
             font-size: 0.8rem !important;
             min-height: 36px !important;
+            white-space: nowrap !important;
         }
 
         /* 탭 — 콤팩트 */

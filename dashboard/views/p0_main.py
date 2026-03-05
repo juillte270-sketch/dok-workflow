@@ -94,7 +94,7 @@ def render(get_date_str, get_date_compact):
         sub = s.get("sub", "")
         sub_html = f' <span style="color:#64748B;font-size:0.75rem">{sub}</span>' if sub else ""
 
-        c_info, c_btn = st.columns([5, 1])
+        c_info, c_btn = st.columns([4, 1])
         c_info.markdown(
             f'<div style="display:flex;align-items:center;gap:6px;min-height:32px">'
             f'<span class="step-num-sm">{s["icon"]}</span>'
