@@ -86,7 +86,7 @@ def render(get_date_str, get_date_compact):
                     with st.spinner(f"최종 명세서 생성 중... ({td}, {i+1}/{len(target_dates)})"):
                         success, stdout, stderr, elapsed = run_script(
                             "generate_final_invoices.py",
-                            ["--date", td],
+                            ["--date", td, "--master", settings["master_file"]],
                         )
                     if success:
                         mark_stage("stage8_final", "completed", {"elapsed": elapsed}, date_str=td)
