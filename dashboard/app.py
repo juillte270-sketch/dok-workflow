@@ -270,36 +270,32 @@ st.markdown("""
         h2 { font-size: 1.05rem !important; }
         h3 { font-size: 0.95rem !important; }
 
-        /* Column 가로 유지 (세로 스택 방지) + 균등 축소 */
-        [data-testid="stHorizontalBlock"] {
+        /* Column 가로 유지 — Streamlit 내부 CSS보다 높은 specificity */
+        [data-testid="stMain"] [data-testid="stHorizontalBlock"],
+        .main [data-testid="stHorizontalBlock"],
+        div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
-            gap: 0.3rem !important;
+            gap: 0.2rem !important;
         }
-        [data-testid="column"] {
+        [data-testid="stMain"] [data-testid="column"],
+        .main [data-testid="column"],
+        div[data-testid="column"] {
             min-width: 0 !important;
+            width: auto !important;
+            flex: 1 1 0% !important;
         }
 
         /* 요소 간 세로 간격 축소 */
-        [data-testid="stVerticalBlock"] {
-            gap: 0.3rem !important;
-        }
-
-        /* 메트릭 카드 — 초콤팩트 */
-        [data-testid="stMetric"] {
-            padding: 4px 6px !important;
-        }
-        [data-testid="stMetricValue"] {
-            font-size: 1rem !important;
-        }
-        [data-testid="stMetricLabel"] {
-            font-size: 0.7rem !important;
+        [data-testid="stMain"] [data-testid="stVerticalBlock"],
+        div[data-testid="stVerticalBlock"] {
+            gap: 0.25rem !important;
         }
 
         /* 버튼 — 콤팩트 + 텍스트 잘림 방지 */
         .stButton > button {
-            padding: 0.3rem 0.5rem !important;
-            font-size: 0.8rem !important;
-            min-height: 36px !important;
+            padding: 0.25rem 0.4rem !important;
+            font-size: 0.78rem !important;
+            min-height: 34px !important;
             white-space: nowrap !important;
         }
 

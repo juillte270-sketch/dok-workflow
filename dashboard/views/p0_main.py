@@ -118,16 +118,16 @@ def render(get_date_str, get_date_compact):
         unsafe_allow_html=True,
     )
 
-    # Batch buttons
-    col_batch, col_kakao, col_reset = st.columns(3)
+    # Batch buttons — 짧은 텍스트로 모바일 대응
+    col_batch, col_kakao, col_reset = st.columns([1.5, 1, 1])
     with col_batch:
-        if st.button("일괄 (1→5)", type="primary", key="btn_batch_morning"):
+        if st.button("▶ 일괄", type="primary", key="btn_batch_morning"):
             _run_batch_morning(date_str, settings)
     with col_kakao:
-        if st.button("카톡 전송", key="btn_kakao_summary"):
+        if st.button("카톡", key="btn_kakao_summary"):
             _send_kakao_summary(date_str, progress)
     with col_reset:
-        if st.button("초기화", key="btn_reset_progress"):
+        if st.button("리셋", key="btn_reset_progress"):
             _reset_progress(date_str)
 
     # Stage-by-stage control (compact 2-column layout)
@@ -139,7 +139,7 @@ def render(get_date_str, get_date_compact):
         sub = s.get("sub", "")
         sub_html = f' <span style="color:#64748B;font-size:0.75rem">{sub}</span>' if sub else ""
 
-        c_info, c_btn = st.columns([3.5, 1])
+        c_info, c_btn = st.columns([3, 1.2])
         c_info.markdown(
             f'<div style="display:flex;align-items:center;gap:6px;min-height:32px">'
             f'<span class="step-num-sm">{s["icon"]}</span>'
