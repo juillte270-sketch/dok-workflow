@@ -155,7 +155,7 @@ def _render_inner(get_date_str, get_date_compact):
         with col_info:
             st.markdown(
                 f'<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
-                f'font-size:0.88rem;line-height:40px">'
+                f'font-size:0.85rem;line-height:32px">'
                 f'<b style="color:#94A3B8">{s["icon"]}.</b> {s["name"]} {status_txt}'
                 f'</div>',
                 unsafe_allow_html=True,

@@ -265,9 +265,13 @@ st.markdown("""
             padding-bottom: 1rem !important;
         }
 
-        /* 요소 간 세로 간격 축소 */
+        /* 요소 간 세로 간격 최소화 — 13개 스테이지 한 화면에 */
         [data-testid="stVerticalBlock"] {
-            gap: 0.3rem !important;
+            gap: 0 !important;
+        }
+        [data-testid="stElementContainer"] {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         /* 사이드바 최소 너비 해제 */
@@ -299,12 +303,13 @@ st.markdown("""
             min-width: 0 !important;
         }
 
-        /* 버튼 — 터치 친화적 + 콤팩트 */
+        /* 버튼 — 콤팩트 + 터치 가능 */
         .stButton > button {
-            padding: 0.4rem 0.5rem !important;
-            font-size: 0.82rem !important;
-            min-height: 40px !important;
+            padding: 0.2rem 0.4rem !important;
+            font-size: 0.8rem !important;
+            min-height: 32px !important;
             white-space: nowrap !important;
+            margin: 0 !important;
         }
 
         /* 탭 — 콤팩트 */
@@ -356,7 +361,7 @@ st.markdown("""
         }
         h1 { font-size: 1.1rem !important; }
         [data-testid="stVerticalBlock"] {
-            gap: 0.2rem !important;
+            gap: 0 !important;
         }
         section[data-testid="stSidebar"] h3 {
             font-size: 0.9rem !important;
