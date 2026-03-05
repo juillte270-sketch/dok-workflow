@@ -265,14 +265,13 @@ st.markdown("""
             padding-bottom: 1rem !important;
         }
 
-        /* 요소 간 세로 간격 최소화 — 13개 스테이지 한 화면에 */
-        [data-testid="stVerticalBlock"] {
-            gap: 0 !important;
-        }
-        [data-testid="stElementContainer"] {
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-        }
+        /* 모든 wrapper 세로 간격 제거 — 13개 스테이지 한 화면 */
+        [data-testid="stVerticalBlock"] { gap: 0 !important; }
+        [data-testid="stElementContainer"] { margin: 0 !important; padding: 0 !important; }
+        [data-testid="stHorizontalBlock"] { margin: 0 !important; padding: 0 !important; }
+        [data-testid="column"] > [data-testid="stVerticalBlock"] { gap: 0 !important; padding: 0 !important; }
+        [data-testid="stMarkdown"] { padding: 0 !important; }
+        div[data-testid="stMarkdown"] p { margin: 0 !important; }
 
         /* 사이드바 최소 너비 해제 */
         section[data-testid="stSidebar"] {
