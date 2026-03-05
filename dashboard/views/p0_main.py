@@ -85,47 +85,40 @@ def render(get_date_str, get_date_compact):
 
     st.markdown("")  # spacing
 
-    # Stage-by-stage control (flat list)
+    # Stage-by-stage control (compact 2-column layout)
     for s in STAGES:
         sid = s["id"]
         info = progress.get(sid, {})
         status = info.get("status", "pending")
+        badge = render_stage_badge(status, info.get("timestamp", ""))
+        sub = s.get("sub", "")
+        sub_html = f' <span style="color:#64748B;font-size:0.75rem">{sub}</span>' if sub else ""
 
-        with st.container():
-            c1, c2, c3, c4 = st.columns([0.6, 3, 1.2, 1.2])
+        c_info, c_btn = st.columns([5, 1])
+        c_info.markdown(
+            f'<div style="display:flex;align-items:center;gap:6px;min-height:32px">'
+            f'<span class="step-num-sm">{s["icon"]}</span>'
+            f'<span style="flex:1"><b style="font-size:0.88rem">{s["name"]}</b>{sub_html}</span>'
+            f'{badge}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
-            c1.markdown(
-                f'<span class="step-num">{s["icon"]}</span>',
-                unsafe_allow_html=True,
-            )
-            sub = s.get("sub", "")
-            if sub:
-                c2.markdown(
-                    f"**{s['name']}**<br><span style='color:#94A3B8; font-size:0.82rem'>{sub}</span>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                c2.markdown(f"**{s['name']}**")
-            c3.markdown(
-                render_stage_badge(status, info.get("timestamp", "")),
-                unsafe_allow_html=True,
-            )
-
-            btn_key = f"main_run_{sid}"
-            cloud_mode = is_cloud()
-            if s.get("dev"):
-                c4.button("개발중", key=btn_key, disabled=True)
-            elif cloud_mode and sid in CLOUD_DISABLED_STAGES:
-                c4.button("Cloud 미지원", key=btn_key, disabled=True)
-            elif status == "running":
-                c4.button("실행중...", key=btn_key, disabled=True)
-            else:
-                if c4.button("실행", key=btn_key):
-                    _run_single_stage(sid, date_str, settings)
+        btn_key = f"main_run_{sid}"
+        cloud_mode = is_cloud()
+        if s.get("dev"):
+            c_btn.button("개발중", key=btn_key, disabled=True)
+        elif cloud_mode and sid in CLOUD_DISABLED_STAGES:
+            c_btn.button("미지원", key=btn_key, disabled=True)
+        elif status == "running":
+            c_btn.button("...", key=btn_key, disabled=True)
+        else:
+            if c_btn.button("실행", key=btn_key):
+                _run_single_stage(sid, date_str, settings)
 
         # Show error inline if failed
         if status == "failed" and info.get("error"):
-            with st.expander(f"오류 상세: {s['name']}", expanded=False):
+            with st.expander(f"오류: {s['name']}", expanded=False):
                 st.code(info["error"][-1500:], language="text")
                 if st.button("재시도", key=f"retry_{sid}"):
                     _run_single_stage(sid, date_str, settings)

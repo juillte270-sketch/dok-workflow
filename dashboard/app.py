@@ -270,22 +270,33 @@ st.markdown("""
         h2 { font-size: 1.05rem !important; }
         h3 { font-size: 0.95rem !important; }
 
-        /* 메트릭 카드 — 콤팩트 */
-        [data-testid="stMetric"] {
-            padding: 10px 12px !important;
-        }
-        [data-testid="stMetricValue"] {
-            font-size: 1.3rem !important;
-        }
-        [data-testid="stMetricLabel"] {
-            font-size: 0.78rem !important;
+        /* Column 가로 유지 (세로 스택 방지) */
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.3rem !important;
         }
 
-        /* 버튼 — 터치 친화적 (최소 44px) */
+        /* 요소 간 세로 간격 축소 */
+        [data-testid="stVerticalBlock"] {
+            gap: 0.3rem !important;
+        }
+
+        /* 메트릭 카드 — 초콤팩트 */
+        [data-testid="stMetric"] {
+            padding: 6px 8px !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1rem !important;
+        }
+        [data-testid="stMetricLabel"] {
+            font-size: 0.7rem !important;
+        }
+
+        /* 버튼 — 터치 친화적 but 콤팩트 */
         .stButton > button {
-            padding: 0.6rem 0.75rem !important;
-            font-size: 0.85rem !important;
-            min-height: 44px !important;
+            padding: 0.3rem 0.5rem !important;
+            font-size: 0.8rem !important;
+            min-height: 36px !important;
         }
 
         /* 탭 — 콤팩트 */
@@ -343,19 +354,31 @@ st.markdown("""
     /* === 초소형 모바일 — 480px 이하 === */
     @media (max-width: 480px) {
         .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
+            padding-left: 0.4rem !important;
+            padding-right: 0.4rem !important;
         }
 
         h1 { font-size: 1.1rem !important; }
 
         [data-testid="stMetricValue"] {
-            font-size: 1.1rem !important;
+            font-size: 0.9rem !important;
+        }
+
+        /* 세로 간격 더 축소 */
+        [data-testid="stVerticalBlock"] {
+            gap: 0.15rem !important;
         }
 
         /* 사이드바 내 타이틀 축소 */
         section[data-testid="stSidebar"] h3 {
             font-size: 0.9rem !important;
+        }
+
+        /* 스텝 번호 더 축소 */
+        .step-num-sm {
+            width: 18px !important;
+            height: 18px !important;
+            font-size: 0.6rem !important;
         }
     }
 </style>
