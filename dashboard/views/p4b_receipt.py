@@ -21,6 +21,10 @@ from dashboard.utils import (
 )
 from dashboard.drive_service import is_cloud
 
+# KST 타임존 (Cloud 서버는 UTC이므로 명시적 변환 필요)
+from datetime import timezone as _tz
+_KST = _tz(timedelta(hours=9))
+
 # Drive 영수증 폴더 ID 캐시
 _receipt_folder_id = None
 
@@ -404,14 +408,15 @@ def _list_drive_receipts(since_hours=24):
     all_files = list_folder(folder_id)
 
     image_types = {"image/jpeg", "image/png", "image/bmp"}
-    cutoff = datetime.now() - timedelta(hours=since_hours)
+    now_kst = datetime.now(_KST).replace(tzinfo=None)
+    cutoff = now_kst - timedelta(hours=since_hours)
 
     result = []
     for f in all_files:
         if f.get("mimeType") not in image_types:
             continue
         mod_time = datetime.fromisoformat(f["modifiedTime"].replace("Z", "+00:00"))
-        mod_local = mod_time.astimezone().replace(tzinfo=None)
+        mod_local = mod_time.astimezone(_KST).replace(tzinfo=None)
         if mod_local < cutoff:
             continue
         result.append({

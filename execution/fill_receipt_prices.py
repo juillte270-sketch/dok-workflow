@@ -202,14 +202,14 @@ def fill_receipt_prices(master_file, target_date, receipts, dry_run=False):
             if skip_reason:
                 print(f"  [SKIP] {receipt_name} → {skip_reason}")
                 skipped += 1
-                details.append(f"{supplier}/{receipt_name}: SKIP ({skip_reason})")
+                details.append(f"[SKIP] {supplier}/{receipt_name}: {skip_reason}")
                 continue
 
             # FIXED_PRICE_ITEMS에 해당하는 단가시트 품목도 스킵
             if danga_name in FIXED_PRICE_ITEMS:
                 print(f"  [SKIP] {receipt_name} → {danga_name} (고정가 품목)")
                 skipped += 1
-                details.append(f"{supplier}/{receipt_name}: SKIP (고정가)")
+                details.append(f"[SKIP] {supplier}/{receipt_name}: 고정가 품목")
                 continue
 
             # 단가시트에서 품목 찾기
@@ -224,7 +224,7 @@ def fill_receipt_prices(master_file, target_date, receipts, dry_run=False):
 
             if not row_info:
                 print(f"  [MISS] {receipt_name} → {danga_name} (단가시트에 없음)")
-                details.append(f"{supplier}/{receipt_name}: NOT FOUND in sheet")
+                details.append(f"[MISS] {supplier}/{receipt_name} → {danga_name}: 단가시트에 없음")
                 continue
 
             row_idx = row_info['row']
@@ -263,13 +263,15 @@ def fill_receipt_prices(master_file, target_date, receipts, dry_run=False):
             old_val = cell_i.value
             if dry_run:
                 print(f"  [DRY] {receipt_name} → {danga_name} R{row_idx}: {old_val} → {price:,}")
+                tag = "[DRY]"
             else:
                 cell_i.value = price
                 cell_i.number_format = '#,##0'
                 print(f"  [OK] {receipt_name} → {danga_name} R{row_idx}: {old_val} → {price:,}")
+                tag = "[OK]"
 
             updates += 1
-            details.append(f"{supplier}/{receipt_name} → {danga_name} R{row_idx}: {price:,}")
+            details.append(f"{tag} {supplier}/{receipt_name} → {danga_name} R{row_idx}: {price:,}")
 
     # 결과 요약
     print(f"\n=== 결과 ===")
