@@ -75,17 +75,39 @@ def _render_master_selector(settings):
             st.caption("⚠️ 마스터 파일 없음")
 
 
+DRIVE_RECEIPT_DIR = r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단가_자료\카톡 영수증"
+
+
 def _get_receipt_dir():
-    """카카오톡 다운로드 폴더 경로 (p0_main용)."""
+    """영수증 이미지 폴더 경로. Drive 카톡 영수증 폴더 우선, 없으면 카카오톡 폴더."""
+    if os.path.isdir(DRIVE_RECEIPT_DIR):
+        return DRIVE_RECEIPT_DIR
     user_profile = os.environ.get('USERPROFILE', '')
     for path in [
+        os.path.join(user_profile, 'OneDrive', '문서', '카카오톡 받은 파일'),
         os.path.join(user_profile, 'Documents', '카카오톡 받은 파일'),
         os.path.join(user_profile, '문서', '카카오톡 받은 파일'),
-        os.path.join(user_profile, 'OneDrive', '문서', '카카오톡 받은 파일'),
     ]:
         if os.path.isdir(path):
             return path
     return ""
+
+
+def _sync_receipts_to_drive():
+    """카카오톡 받은 파일 → Drive 카톡 영수증 폴더 동기화 (1회)."""
+    try:
+        from dashboard.utils import run_script
+        success, stdout, stderr, elapsed = run_script(
+            "sync_receipts.py", ["--once", "--since", "1440"], timeout=30,
+        )
+        if success and stdout:
+            # 복사 건수 추출
+            for line in stdout.strip().split("\n"):
+                if "동기화 완료" in line:
+                    return line.strip()
+        return None
+    except Exception:
+        return None
 
 
 def render(get_date_str, get_date_compact):
@@ -252,7 +274,7 @@ def _get_stage_args(stage_id, date_str, settings, master_override=None):
         "stage4_second": ["--date", date_str, "--master", master, "--preview"],
         "stage_receipt": ["--master", master, "--date", date_str, "--image-dir", _get_receipt_dir(), "--since-minutes", "1440"],
         "stage7_fill": ["--date", date_str, "--master-file", master],
-        "stage8_final": ["--date", date_str],
+        "stage8_final": ["--date", date_str, "--master", master],
         "stage_report": ["--date", date_str],
     }
     return args_map.get(stage_id, [])
@@ -281,6 +303,13 @@ def _run_single_stage(stage_id, date_str, settings):
 
     # Resolve master path (cloud: download from Drive)
     master_path, from_drive = resolve_master_path(settings)
+
+    # 영수증 스테이지: 실행 전 카카오톡 → Drive 동기화
+    if stage_id == "stage_receipt" and not is_cloud():
+        with st.spinner("카카오톡 영수증 동기화 중..."):
+            sync_msg = _sync_receipts_to_drive()
+        if sync_msg:
+            st.toast(f"📋 {sync_msg}")
 
     # Stages that modify master file get a backup
     modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill"}
