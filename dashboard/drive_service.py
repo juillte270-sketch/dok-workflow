@@ -1,6 +1,6 @@
 """
 Google Drive API service for Streamlit Cloud deployment.
-Provides dual-mode operation: local (G:\ File Stream) vs cloud (Drive API).
+Provides dual-mode operation: local (G: File Stream) vs cloud (Drive API).
 """
 import os
 import tempfile
