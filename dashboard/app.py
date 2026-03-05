@@ -300,11 +300,29 @@ st.markdown("""
             min-width: 0 !important;
         }
 
-        /* 버튼 — 콤팩트 */
+        /* 메트릭 카드 — 콤팩트 */
+        [data-testid="stMetric"] {
+            padding: 10px 12px !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.3rem !important;
+        }
+        [data-testid="stMetricLabel"] {
+            font-size: 0.78rem !important;
+        }
+
+        /* 버튼 — 터치 친화적 (최소 44px) */
         .stButton > button {
-            padding: 0.4rem 0.6rem !important;
-            font-size: 0.82rem !important;
-            min-height: 36px !important;
+            padding: 0.6rem 0.75rem !important;
+            font-size: 0.85rem !important;
+            min-height: 44px !important;
+        }
+
+        /* 스텝 번호 — 축소 */
+        .step-num {
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 0.7rem !important;
         }
 
         /* 탭 — 콤팩트 */
@@ -357,6 +375,9 @@ st.markdown("""
         h1 { font-size: 1.1rem !important; }
         [data-testid="stVerticalBlock"] {
             gap: 0 !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.1rem !important;
         }
         section[data-testid="stSidebar"] h3 {
             font-size: 0.9rem !important;
