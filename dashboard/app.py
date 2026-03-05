@@ -321,6 +321,7 @@ with st.sidebar:
         "10. 실행 이력",
         "11. 설정",
         "12. 배송 관리",
+        "13. 일일보고서",
     ]
 
     def _fmt_page(name):
@@ -393,3 +394,6 @@ elif page == "11. 설정":
 elif page == "12. 배송 관리":
     from dashboard.views import p9_delivery
     p9_delivery.render(get_date_str, get_date_compact)
+elif page == "13. 일일보고서":
+    from dashboard.views import p10_report
+    p10_report.render(get_date_str, get_date_compact)

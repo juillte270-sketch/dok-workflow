@@ -206,7 +206,7 @@ STAGES = [
         "icon": "12",
         "requires": [],
         "script": "generate_daily_report.py",
-        "page": "9. 일일보고서",
+        "page": "13. 일일보고서",
     },
 ]
 

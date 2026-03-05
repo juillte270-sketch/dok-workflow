@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 from dashboard.utils import (
     load_settings, run_script, mark_stage, get_stage_status,
     check_master_before_run, format_elapsed, get_timeout, append_log,
+    resolve_master_path, sync_master_back,
 )
+from dashboard.drive_service import is_cloud
 
 
 def render(get_date_str, get_date_compact):
@@ -12,8 +14,14 @@ def render(get_date_str, get_date_compact):
 
     st.header("7. 동원발주 스크래핑")
 
+    # Cloud guard — Selenium 필수
+    if is_cloud():
+        st.warning("Cloud 미지원 (Selenium 브라우저 필요) — 로컬 대시보드에서 실행해주세요")
+        return
+
     settings = load_settings()
     master_ok = check_master_before_run(settings)
+    master_path, from_drive = resolve_master_path(settings)
 
     st.divider()
 
@@ -42,7 +50,7 @@ def render(get_date_str, get_date_compact):
             with st.spinner("HELO 스크래핑 중... (브라우저 자동화)"):
                 success, stdout, stderr, elapsed = run_script(
                     "scrape_helo.py",
-                    ["--master", settings["master_file"], "--date", date_str],
+                    ["--master", master_path, "--date", date_str],
                     timeout=get_timeout("default"),
                 )
             if success:
@@ -54,7 +62,7 @@ def render(get_date_str, get_date_compact):
                 with st.spinner("다음날짜 재고현황 생성 중..."):
                     inv_ok, inv_out, inv_err, inv_elapsed = run_script(
                         "manage_inventory_date.py",
-                        ["--prev-date", date_str, "--new-date", next_date, "--master", settings["master_file"]],
+                        ["--prev-date", date_str, "--new-date", next_date, "--master", master_path],
                         timeout=300,
                     )
                 if inv_ok:
@@ -100,7 +108,7 @@ def render(get_date_str, get_date_compact):
             key="btn_second_order",
             disabled=not helo_done,
         ):
-            args = ["--date", date_str, "--master", settings["master_file"]]
+            args = ["--date", date_str, "--master", master_path]
             if preview_mode:
                 args.append("--preview")
 

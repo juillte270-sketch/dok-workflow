@@ -1,11 +1,14 @@
 """Page 4b: 매입가 입력 - 영수증 일괄 처리 (Stage receipt).
 
 중단 기능: Popen으로 실행 → PID를 state 파일에 저장 → 중단 버튼 클릭 시 kill.
+Cloud 모드: st.file_uploader → Gemini API 파싱 → 단가시트 입력 → Drive 업로드.
 """
 import streamlit as st
 import os
 import json
 import signal
+import sys
+import tempfile
 import time
 import subprocess
 import threading
@@ -14,8 +17,9 @@ from pathlib import Path
 from dashboard.utils import (
     load_settings, run_script, run_script_streaming, mark_stage, get_stage_status,
     check_master_before_run, format_elapsed, get_timeout, append_log,
-    PROJECT_ROOT,
+    PROJECT_ROOT, resolve_master_path, sync_master_back,
 )
+from dashboard.drive_service import is_cloud
 
 # PID 파일 경로 (실행 중인 프로세스 추적)
 _PID_FILE = os.path.join(PROJECT_ROOT, 'dashboard', 'state', 'receipt_pid.json')
@@ -165,9 +169,16 @@ def render(get_date_str, get_date_compact):
     date_str = get_date_str()
 
     st.header("8. 매입가 입력 (영수증)")
-    st.caption("카카오톡 다운로드 폴더의 영수증 이미지를 일괄 파싱하여 단가시트 매입가(Col I)에 입력합니다.")
 
     settings = load_settings()
+
+    # Cloud mode: file uploader 방식
+    if is_cloud():
+        st.caption("영수증 이미지를 업로드하여 Gemini API로 파싱 → 단가시트 매입가(Col I) 입력")
+        _render_cloud_mode(date_str, settings)
+        return
+
+    st.caption("카카오톡 다운로드 폴더의 영수증 이미지를 일괄 파싱하여 단가시트 매입가(Col I)에 입력합니다.")
     master_ok = check_master_before_run(settings)
 
     # 스테이지 상태
@@ -364,6 +375,214 @@ def render(get_date_str, get_date_compact):
     st.divider()
     with st.expander("개별 영수증 입력 (URL/텍스트)"):
         _render_manual_input(settings, date_str, master_ok)
+
+
+def _render_cloud_mode(date_str, settings):
+    """Cloud 환경: file uploader → Gemini 파싱 → 단가시트 입력."""
+    master_path, from_drive = resolve_master_path(settings)
+
+    # 스테이지 상태
+    status = get_stage_status("stage_receipt", date_str)
+    if status == "completed":
+        st.success("완료됨")
+    elif status == "failed":
+        st.error("이전 실행 실패")
+
+    st.divider()
+
+    # 파일 업로드
+    uploaded_files = st.file_uploader(
+        "영수증 이미지 업로드",
+        type=["jpg", "jpeg", "png", "bmp"],
+        accept_multiple_files=True,
+        key="cloud_receipt_upload",
+    )
+
+    if uploaded_files:
+        st.caption(f"{len(uploaded_files)}개 이미지 선택됨")
+
+        # 미리보기
+        with st.expander(f"이미지 미리보기 ({len(uploaded_files)}개)", expanded=False):
+            cols = st.columns(3)
+            for i, uf in enumerate(uploaded_files):
+                with cols[i % 3]:
+                    st.image(uf, caption=uf.name, width=200)
+
+    st.divider()
+
+    # 옵션
+    col_btn, col_opt = st.columns([2, 1])
+    with col_opt:
+        dry_run = st.checkbox("미리보기만 (dry-run)", value=False, key="cloud_receipt_dry")
+
+    with col_btn:
+        num = len(uploaded_files) if uploaded_files else 0
+        btn_label = f"영수증 일괄 처리 ({num}개)" if not dry_run else f"미리보기 실행 ({num}개)"
+        if st.button(
+            btn_label,
+            type="primary",
+            key="btn_cloud_receipt",
+            disabled=not uploaded_files,
+        ):
+            _process_cloud_receipts(uploaded_files, master_path, date_str, dry_run, from_drive)
+
+    # 개별 입력 (URL/텍스트) — Cloud에서도 작동
+    st.divider()
+    with st.expander("개별 영수증 입력 (URL/텍스트)"):
+        _render_manual_input_cloud(master_path, date_str, from_drive)
+
+
+def _process_cloud_receipts(uploaded_files, master_path, date_str, dry_run, from_drive):
+    """Cloud: 업로드된 이미지 → temp 저장 → parse_receipt → fill_receipt_prices → sync."""
+    # Ensure execution/ is in path
+    exec_dir = os.path.join(PROJECT_ROOT, 'execution')
+    if exec_dir not in sys.path:
+        sys.path.insert(0, exec_dir)
+
+    # Set GEMINI_API_KEY from Streamlit secrets if not in env
+    try:
+        import streamlit as _st
+        gemini_key = _st.secrets.get("GEMINI_API_KEY", "")
+        if gemini_key and not os.environ.get("GEMINI_API_KEY"):
+            os.environ["GEMINI_API_KEY"] = gemini_key
+    except Exception:
+        pass
+
+    from parse_receipt import parse_receipt, map_to_danga_items
+    from fill_receipt_prices import fill_receipt_prices
+
+    mark_stage("stage_receipt", "running", date_str=date_str)
+    all_receipts = []
+    output_lines = []
+    start_t = time.time()
+
+    with st.spinner(f"영수증 파싱 중... ({len(uploaded_files)}개)"):
+        for uf in uploaded_files:
+            # temp 파일 저장
+            suffix = os.path.splitext(uf.name)[1] or ".jpg"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(uf.getbuffer())
+                tmp_path = tmp.name
+
+            try:
+                result = parse_receipt(image_path=tmp_path)
+                if "error" in result:
+                    output_lines.append(f"[WARN] {uf.name}: {result['error']}")
+                else:
+                    result["source_file"] = uf.name
+                    all_receipts.append(result)
+                    n_items = len(result.get("items", []))
+                    supplier = result.get("supplier", "?")
+                    output_lines.append(f"[PARSE] {uf.name}: {supplier} ({n_items}개 품목)")
+            except Exception as e:
+                output_lines.append(f"[WARN] {uf.name}: 파싱 실패 - {e}")
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+
+    if not all_receipts:
+        elapsed = time.time() - start_t
+        mark_stage("stage_receipt", "failed", {"error": "파싱된 영수증 없음"}, date_str=date_str)
+        st.warning("파싱된 영수증이 없습니다.")
+        if output_lines:
+            st.code('\n'.join(output_lines), language="text")
+        return
+
+    # 단가시트 입력
+    with st.spinner("단가시트 매입가 입력 중..."):
+        try:
+            fill_result = fill_receipt_prices(
+                master_file=master_path,
+                target_date=date_str,
+                receipts=all_receipts,
+                dry_run=dry_run,
+            )
+            # Collect output from fill result
+            for detail in fill_result.get("details", []):
+                output_lines.append(detail)
+
+        except Exception as e:
+            elapsed = time.time() - start_t
+            mark_stage("stage_receipt", "failed", {"error": str(e)[-500:]}, date_str=date_str)
+            st.error(f"매입가 입력 실패: {e}")
+            if output_lines:
+                st.code('\n'.join(output_lines), language="text")
+            return
+
+    elapsed = time.time() - start_t
+
+    # Drive 동기화
+    if from_drive and not dry_run:
+        try:
+            sync_master_back(master_path)
+            output_lines.append("[SYNC] Drive 업로드 완료")
+        except Exception as e:
+            output_lines.append(f"[WARN] Drive 업로드 실패: {e}")
+
+    if not dry_run:
+        mark_stage("stage_receipt", "completed", {"elapsed": elapsed}, date_str=date_str)
+        append_log(f"영수증 Cloud 처리 완료 ({len(uploaded_files)}개, {format_elapsed(elapsed)})")
+        st.toast(f"영수증 처리 완료 ({format_elapsed(elapsed)})")
+    else:
+        mark_stage("stage_receipt", "pending", date_str=date_str)
+        st.info("미리보기 모드 - 실제 입력되지 않았습니다.")
+
+    # 결과 표시
+    stdout_text = '\n'.join(output_lines)
+    _show_batch_result(stdout_text, "")
+
+
+def _render_manual_input_cloud(master_path, date_str, from_drive):
+    """Cloud용 개별 입력 (URL/텍스트) — subprocess에 master_path 전달."""
+    input_type = st.radio(
+        "입력 유형", ["URL", "텍스트"],
+        horizontal=True, key="receipt_manual_type",
+    )
+
+    if input_type == "URL":
+        url = st.text_input("영수증 URL", key="receipt_manual_url",
+                            placeholder="https://www.itanet.co.kr/...")
+        if st.button("URL 입력", key="btn_manual_url", disabled=not url):
+            args = ["--master", master_path, "--date", date_str, "--url", url]
+            with st.spinner("URL 파싱 + 입력 중..."):
+                success, stdout, stderr, elapsed = run_script("fill_receipt_prices.py", args)
+            if success:
+                if from_drive:
+                    try:
+                        sync_master_back(master_path)
+                    except Exception:
+                        pass
+                st.success(f"완료 ({format_elapsed(elapsed)})")
+                if stdout:
+                    st.code(stdout[-2000:], language="text")
+            else:
+                st.error("실패")
+                st.code(stderr[-1000:] if stderr else "Error", language="text")
+
+    elif input_type == "텍스트":
+        supplier = st.text_input("공급처명 (필수)", key="receipt_manual_supplier")
+        text = st.text_area("영수증 텍스트", key="receipt_manual_text",
+                            placeholder="감자 62000\n당근 35000")
+        if st.button("텍스트 입력", key="btn_manual_text",
+                      disabled=not text or not supplier):
+            args = ["--master", master_path, "--date", date_str,
+                    "--text", text, "--supplier", supplier]
+            with st.spinner("텍스트 파싱 + 입력 중..."):
+                success, stdout, stderr, elapsed = run_script("fill_receipt_prices.py", args)
+            if success:
+                if from_drive:
+                    try:
+                        sync_master_back(master_path)
+                    except Exception:
+                        pass
+                st.success(f"완료 ({format_elapsed(elapsed)})")
+                if stdout:
+                    st.code(stdout[-2000:], language="text")
+            else:
+                st.error("실패")
+                st.code(stderr[-1000:] if stderr else "Error", language="text")
 
 
 def _show_live_log():

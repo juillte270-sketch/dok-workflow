@@ -12,7 +12,7 @@ from dashboard.utils import (
 from dashboard.drive_service import is_cloud
 
 # Stages that require Selenium or local-only resources (disabled in cloud)
-CLOUD_DISABLED_STAGES = {"stage3_sikbom", "stage4_helo", "stage4_second", "stage_receipt", "stage_report"}
+CLOUD_DISABLED_STAGES = {"stage3_sikbom", "stage4_helo", "stage4_second"}
 
 
 def _get_receipt_dir():

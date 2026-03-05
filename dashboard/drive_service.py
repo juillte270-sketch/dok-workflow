@@ -195,6 +195,55 @@ def list_folder(folder_id: str) -> list:
     return results.get("files", [])
 
 
+def download_file_by_id(file_id: str, local_path: str = None) -> str:
+    """Drive 파일을 ID로 다운로드. local_path 미지정 시 temp 디렉토리."""
+    service = get_drive_service()
+
+    from googleapiclient.http import MediaIoBaseDownload
+    import io
+
+    # Get filename from Drive if no local_path specified
+    if local_path is None:
+        meta = service.files().get(fileId=file_id, fields="name").execute()
+        tmp_dir = tempfile.gettempdir()
+        local_path = os.path.join(tmp_dir, meta.get("name", f"drive_{file_id}"))
+
+    request = service.files().get_media(fileId=file_id)
+    fh = io.FileIO(local_path, "wb")
+    downloader = MediaIoBaseDownload(fh, request)
+
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+
+    fh.close()
+    logger.info(f"File downloaded: {file_id} -> {local_path}")
+    return local_path
+
+
+def search_file_in_folder(folder_id: str, name_contains: str) -> list:
+    """폴더 내에서 파일명 검색. 이전 보고서 찾기용.
+
+    Returns:
+        list of {id, name, modifiedTime}
+    """
+    service = get_drive_service()
+
+    query = (
+        f"'{folder_id}' in parents "
+        f"and name contains '{name_contains}' "
+        f"and trashed = false"
+    )
+    results = service.files().list(
+        q=query,
+        fields="files(id, name, modifiedTime)",
+        orderBy="modifiedTime desc",
+        pageSize=20,
+    ).execute()
+
+    return results.get("files", [])
+
+
 def check_drive_connection() -> tuple:
     """Test Drive API connection. Returns (ok: bool, message: str)."""
     if not is_cloud():

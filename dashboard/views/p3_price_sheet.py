@@ -70,7 +70,7 @@ def render(get_date_str, get_date_compact):
             st.success("완료됨")
 
         if cloud_mode:
-            st.caption("Cloud 미지원 (Selenium 브라우저 필요)")
+            st.caption("Cloud 미지원 (Selenium 브라우저 필요) — 로컬 대시보드에서 실행해주세요")
             st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=True)
         else:
             st.caption("Selenium 브라우저 자동 조회 (2~5분)")

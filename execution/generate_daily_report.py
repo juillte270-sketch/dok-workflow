@@ -125,30 +125,63 @@ def replace_dates_in_text(text: str, old_date: datetime, new_date: datetime) -> 
     return text
 
 
-def generate_report(target_date: datetime, dry_run: bool = False) -> str:
-    """Generate daily report by copying and modifying previous day's report."""
+def _extract_date_from_filename(path: Path) -> datetime:
+    """파일명에서 날짜 추출: '일일업무보고서(3.5 수).hwp' → datetime."""
+    import re
+    name = path.name if isinstance(path, Path) else Path(path).name
+    m = re.search(r'\((\d{1,2})\.(\d{1,2})', name)
+    if m:
+        month, day = int(m.group(1)), int(m.group(2))
+        # Assume current year or nearby
+        now = datetime.now()
+        for year in [now.year, now.year - 1]:
+            try:
+                return datetime(year, month, day)
+            except ValueError:
+                continue
+    raise ValueError(f"파일명에서 날짜를 추출할 수 없습니다: {name}")
+
+
+def generate_report(target_date: datetime, dry_run: bool = False,
+                    prev_path=None, output_path=None) -> str:
+    """Generate daily report by copying and modifying previous day's report.
+
+    Args:
+        target_date: 생성할 보고서 날짜
+        dry_run: True면 파일 생성 없이 미리보기만
+        prev_path: 이전 보고서 경로 (None이면 REPORT_BASE에서 자동 검색)
+        output_path: 출력 경로 (None이면 REPORT_BASE에 자동 저장)
+    """
     # Find previous report
-    prev_path, prev_date = find_previous_report(target_date)
     if prev_path is None:
-        raise FileNotFoundError(
-            f"이전 보고서를 찾을 수 없습니다 (최근 14일 내). "
-            f"기준폴더: {REPORT_BASE}"
-        )
+        prev_path, prev_date = find_previous_report(target_date)
+        if prev_path is None:
+            raise FileNotFoundError(
+                f"이전 보고서를 찾을 수 없습니다 (최근 14일 내). "
+                f"기준폴더: {REPORT_BASE}"
+            )
+    else:
+        prev_path = Path(prev_path)
+        prev_date = _extract_date_from_filename(prev_path)
 
     print(f"이전 보고서: {prev_path.name} ({prev_date.strftime('%Y-%m-%d')})")
 
     # Target path
-    target_folder = REPORT_BASE / month_folder_name(target_date)
-    target_folder.mkdir(parents=True, exist_ok=True)
-    target_path = target_folder / report_filename(target_date)
+    if output_path is None:
+        target_folder = REPORT_BASE / month_folder_name(target_date)
+        target_folder.mkdir(parents=True, exist_ok=True)
+        target_path = target_folder / report_filename(target_date)
+    else:
+        target_path = Path(output_path)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if target_path.exists():
+    if target_path.exists() and output_path is None:
         print(f"⚠️ 이미 존재: {target_path.name}")
         return str(target_path)
 
     if dry_run:
-        print(f"[DRY-RUN] 생성 예정: {target_path.name}")
-        print(f"  폴더: {target_folder}")
+        print(f"[DRY-RUN] 생성 예정: {report_filename(target_date)}")
+        print(f"  이전 보고서: {prev_path.name}")
         print(f"  날짜 변경: {prev_date.strftime('%m/%d')}({get_day_kr(prev_date)}) → "
               f"{target_date.strftime('%m/%d')}({get_day_kr(target_date)})")
         return str(target_path)
