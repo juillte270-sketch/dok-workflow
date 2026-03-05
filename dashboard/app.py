@@ -252,9 +252,14 @@ st.markdown("""
 
     /* === Mobile Responsive — 768px 이하 === */
     @media (max-width: 768px) {
-        /* 컨테이너 패딩 축소 */
+        /* Streamlit 헤더 숨김 (Deploy 버튼 등) — 모바일 공간 확보 */
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
+
+        /* 컨테이너 패딩 최소화 */
         .block-container {
-            padding-top: 1rem !important;
+            padding-top: 0.5rem !important;
             padding-left: 0.75rem !important;
             padding-right: 0.75rem !important;
             padding-bottom: 1rem !important;

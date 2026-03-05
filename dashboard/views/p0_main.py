@@ -111,7 +111,7 @@ def _render_inner(get_date_str, get_date_compact):
     waiting = total - completed - failed
 
     st.markdown(
-        f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">'
+        f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">'
         f'<b style="font-size:1rem;flex:1">업무 현황</b>'
         f'<span style="font-size:0.75rem">'
         f'<b style="color:#4ADE80">{completed}</b>/<span style="color:#64748B">{total}</span>'
@@ -121,7 +121,13 @@ def _render_inner(get_date_str, get_date_compact):
         unsafe_allow_html=True,
     )
 
-    # === Stage list — one button per stage (full-width, no columns) ===
+    # === Master file selector (before stages) ===
+    try:
+        _render_master_selector(settings)
+    except Exception:
+        pass
+
+    # === Stage list — left: info, right: button ===
     for s in STAGES:
         sid = s["id"]
         info = progress.get(sid, {})
@@ -129,25 +135,44 @@ def _render_inner(get_date_str, get_date_compact):
         ts = info.get("timestamp", "")
         ts_short = ts[11:16] if len(ts) > 16 else ""
 
-        # Button label: "번호. 이름 — 상태"
+        # Status info for the left label
         if status == "completed":
-            label = f"{s['icon']}. {s['name']}  ✓ 완료 {ts_short}"
-            disabled = True
+            status_html = f'<span style="color:#4ADE80;font-size:0.75rem">✓ 완료 {ts_short}</span>'
+            btn_label = "완료"
+            btn_disabled = True
         elif status == "failed":
-            label = f"{s['icon']}. {s['name']}  ✗ 재시도(실패)"
-            disabled = False
+            status_html = '<span style="color:#F87171;font-size:0.75rem">✗ 실패</span>'
+            btn_label = "재시도"
+            btn_disabled = False
         elif status == "running":
-            label = f"{s['icon']}. {s['name']}  ⏳ 실행중..."
-            disabled = True
+            status_html = '<span style="color:#FBBF24;font-size:0.75rem">⏳ 실행중</span>'
+            btn_label = "실행중"
+            btn_disabled = True
         elif s.get("dev"):
-            label = f"{s['icon']}. {s['name']}  (개발중)"
-            disabled = True
+            status_html = '<span style="color:#64748B;font-size:0.75rem">개발중</span>'
+            btn_label = "개발중"
+            btn_disabled = True
         else:
-            label = f"{s['icon']}. {s['name']}  ▶ 실행(대기)"
-            disabled = False
+            status_html = ''
+            btn_label = "실행"
+            btn_disabled = False
 
-        if st.button(label, key=f"run_{sid}", disabled=disabled, use_container_width=True):
-            _run_single_stage(sid, date_str, settings)
+        # Left: stage info (HTML) | Right: button
+        col_info, col_btn = st.columns([5, 1])
+        with col_info:
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:8px;padding:4px 0;min-height:36px">'
+                f'<span style="display:inline-flex;align-items:center;justify-content:center;'
+                f'width:22px;height:22px;border-radius:50%;background:#334155;'
+                f'color:#CBD5E1;font-size:0.65rem;font-weight:600;flex-shrink:0">{s["icon"]}</span>'
+                f'<span style="font-size:0.88rem;font-weight:500">{s["name"]}</span>'
+                f'{status_html}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with col_btn:
+            if st.button(btn_label, key=f"run_{sid}", disabled=btn_disabled, use_container_width=True):
+                _run_single_stage(sid, date_str, settings)
 
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):
@@ -157,11 +182,6 @@ def _render_inner(get_date_str, get_date_compact):
             _send_kakao_summary(date_str, progress)
         if st.button("진행상황 초기화", key="btn_reset_progress"):
             _reset_progress(date_str)
-        # Master file selector
-        try:
-            _render_master_selector(settings)
-        except Exception:
-            pass
 
     # Error details (if any failed stages)
     failed_stages = [(s, progress.get(s["id"], {})) for s in STAGES
