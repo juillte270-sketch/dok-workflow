@@ -154,30 +154,28 @@ def render(get_date_str, get_date_compact):
 
 
 def _check_and_show_prerequisites(date_str):
-    """Show prerequisite status and return whether all are met."""
+    """Show prerequisite status (informational only, does NOT block execution).
+
+    대시보드 진행기록 기준이므로 CLI 실행 등은 감지 못함.
+    실제 실행 가능 여부는 마스터 파일 데이터 유무로 결정됨.
+    """
     prereqs = [
         ("stage1", "발주 처리"),
-        ("stage2_order", "발주시트 입력"),
-        ("stage2_invoice", "가명세서 생성"),
-        ("stage7_fill", "매입가/판매가 입력"),
+        ("stage2_order", "발주시트"),
+        ("stage2_invoice", "가명세서"),
+        ("stage7_fill", "매입/판매가"),
     ]
 
-    all_ok = True
-    missing_names = []
-    cols = st.columns(len(prereqs))
-    for col, (sid, name) in zip(cols, prereqs):
-        status = get_stage_status(sid, date_str)
-        if status == "completed":
-            col.markdown(f"✅ **{name}**")
-        else:
-            col.markdown(f"⬜ **{name}**")
-            all_ok = False
-            missing_names.append(name)
+    done = sum(1 for sid, _ in prereqs if get_stage_status(sid, date_str) == "completed")
+    total = len(prereqs)
 
-    if not all_ok:
-        st.warning(f"미완료 단계: {', '.join(missing_names)}")
+    if done == total:
+        st.caption(f"선행 단계: {done}/{total} 완료")
+    else:
+        missing = [name for sid, name in prereqs if get_stage_status(sid, date_str) != "completed"]
+        st.caption(f"선행 단계: {done}/{total} (대시보드 기록 기준 — CLI 실행 시 미반영)")
 
-    return all_ok
+    return done == total
 
 
 def _show_final_files(date_compact):
