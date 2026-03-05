@@ -696,7 +696,14 @@ if __name__ == "__main__":
         print(f"❌ Error: Master file not found: {args.master}")
         exit(1)
     
-    create_price_sheet(args.input, args.master, args.date, filter_only=args.filter_only)
+    import sys
+    try:
+        create_price_sheet(args.input, args.master, args.date, filter_only=args.filter_only)
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)
 
     from _notify import notify
     notify("stage3_price", date_str=args.date)

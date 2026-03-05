@@ -813,6 +813,12 @@ if __name__ == "__main__":
         print(f"마스터 파일을 찾을 수 없습니다: {args.master_file}")
         sys.exit(1)
 
-    fill_prices(args.master_file, args.date)
+    try:
+        fill_prices(args.master_file, args.date)
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)
     from _notify import notify
     notify("stage7_fill", date_str=args.date)

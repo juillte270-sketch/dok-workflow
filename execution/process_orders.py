@@ -655,58 +655,65 @@ class OrderProcessor:
         return store_name[:4]
 
 if __name__ == "__main__":
-    mappings_file = os.path.join(project_root, "skills", "order_processing", "resources", "mappings.json")
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input", help="Path to input file", default=os.path.join(project_root, "data", "inputs", "orders_today.txt"))
-    parser.add_argument("--date", help="Target date (YYYY-MM-DD)", default=datetime.now().strftime("%Y-%m-%d"))
-    parser.add_argument("--master-file", help="Master Excel file for inventory check (optional)",
-                        default=None)
-    parser.add_argument("--safety-buffer", action="store_true",
-                        help="Use reorder thresholds as safety buffer for STOCK/MARKET")
-    parser.add_argument("--auto-reorder", action="store_true",
-                        help="Auto-generate supplier reorders for depleted STOCK items")
-    args = parser.parse_args()
+    import sys
+    try:
+        mappings_file = os.path.join(project_root, "skills", "order_processing", "resources", "mappings.json")
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--input", help="Path to input file", default=os.path.join(project_root, "data", "inputs", "orders_today.txt"))
+        parser.add_argument("--date", help="Target date (YYYY-MM-DD)", default=datetime.now().strftime("%Y-%m-%d"))
+        parser.add_argument("--master-file", help="Master Excel file for inventory check (optional)",
+                            default=None)
+        parser.add_argument("--safety-buffer", action="store_true",
+                            help="Use reorder thresholds as safety buffer for STOCK/MARKET")
+        parser.add_argument("--auto-reorder", action="store_true",
+                            help="Auto-generate supplier reorders for depleted STOCK items")
+        args = parser.parse_args()
 
-    input_file = args.input
-    target_date_str = args.date.replace("-", "")
+        input_file = args.input
+        target_date_str = args.date.replace("-", "")
 
-    # Use date-specific output file to preserve historical data
-    output_file = os.path.join(project_root, "data", "inputs", f"processed_orders_{target_date_str}.txt")
+        # Use date-specific output file to preserve historical data
+        output_file = os.path.join(project_root, "data", "inputs", f"processed_orders_{target_date_str}.txt")
 
-    print(f"Processing input file: {input_file}")
-    print(f"Output will be saved to: {output_file}")
-    if args.master_file:
-        mode_parts = ["basic"]
+        print(f"Processing input file: {input_file}")
+        print(f"Output will be saved to: {output_file}")
+        if args.master_file:
+            mode_parts = ["basic"]
+            if args.safety_buffer:
+                mode_parts = ["safety-buffer"]
+            if args.auto_reorder:
+                mode_parts.append("auto-reorder")
+            print(f"Inventory check: enabled ({'+'.join(mode_parts)}, master: {args.master_file})")
+        else:
+            print(f"Inventory check: disabled (use --master-file to enable)")
+
+        processor = OrderProcessor(mappings_file, master_file=args.master_file, target_date=args.date)
         if args.safety_buffer:
-            mode_parts = ["safety-buffer"]
+            processor.use_safety_buffer = True
         if args.auto_reorder:
-            mode_parts.append("auto-reorder")
-        print(f"Inventory check: enabled ({'+'.join(mode_parts)}, master: {args.master_file})")
-    else:
-        print(f"Inventory check: disabled (use --master-file to enable)")
+            processor.auto_reorder = True
+        processor.process(input_file, output_file)
 
-    processor = OrderProcessor(mappings_file, master_file=args.master_file, target_date=args.date)
-    if args.safety_buffer:
-        processor.use_safety_buffer = True
-    if args.auto_reorder:
-        processor.auto_reorder = True
-    processor.process(input_file, output_file)
+        import simple_docx_converter
+        import shutil
+        final_output = os.path.join(project_root, "data", "outputs", f"배송리스트_{target_date_str}.docx")
+        simple_docx_converter.create_docx(output_file, mappings_file, final_output, target_date=args.date)
+        print(f"[OK] Final DOCX generated: {final_output}")
 
-    import simple_docx_converter
-    import shutil
-    final_output = os.path.join(project_root, "data", "outputs", f"배송리스트_{target_date_str}.docx")
-    simple_docx_converter.create_docx(output_file, mappings_file, final_output, target_date=args.date)
-    print(f"[OK] Final DOCX generated: {final_output}")
+        # Copy to Google Drive
+        drive_dir = r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단가_자료\배송리스트"
+        if os.path.isdir(drive_dir):
+            drive_dest = os.path.join(drive_dir, f"배송리스트_{target_date_str}.docx")
+            shutil.copy2(final_output, drive_dest)
+            print(f"[OK] Drive copy: {drive_dest}")
+        else:
+            print(f"[WARN] Drive folder not found: {drive_dir}")
 
-    # Copy to Google Drive
-    drive_dir = r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단가_자료\배송리스트"
-    if os.path.isdir(drive_dir):
-        drive_dest = os.path.join(drive_dir, f"배송리스트_{target_date_str}.docx")
-        shutil.copy2(final_output, drive_dest)
-        print(f"[OK] Drive copy: {drive_dest}")
-    else:
-        print(f"[WARN] Drive folder not found: {drive_dir}")
-
-    from _notify import notify
-    notify("stage1", date_str=args.date)
+        from _notify import notify
+        notify("stage1", date_str=args.date)
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)

@@ -600,7 +600,14 @@ if __name__ == "__main__":
                         help="경매 API 조회일 (YYYY-MM-DD). 기본값: 발주일+1일")
     args = parser.parse_args()
 
-    fill_auction_prices(args.master, args.date, args.auction_date)
+    import sys
+    try:
+        fill_auction_prices(args.master, args.date, args.auction_date)
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)
 
     from _notify import notify
     notify("stage5_auction", date_str=args.date)

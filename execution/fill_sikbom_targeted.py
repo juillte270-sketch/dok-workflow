@@ -426,17 +426,21 @@ class TargetedScraper(FoodspringScraper):
 
         try:
             url = "https://www.foodspring.co.kr/search"
-            if self.driver.current_url.split('?')[0] != url:
-                self.driver.get(url)
+            if self.page.url.split('?')[0] != url:
+                self.page.goto(url, wait_until="networkidle")
 
             search_input = None
             try:
-                search_input = self.wait.until(
-                    lambda d: d.find_element("css selector", "input[type='search']")
-                )
+                loc = self.page.locator("input[type='search']")
+                if loc.count() > 0:
+                    search_input = loc.first
             except:
+                pass
+            if not search_input:
                 try:
-                    search_input = self.driver.find_element("css selector", "input[type='text']")
+                    loc = self.page.locator("input[type='text']")
+                    if loc.count() > 0:
+                        search_input = loc.first
                 except:
                     pass
 
@@ -444,12 +448,11 @@ class TargetedScraper(FoodspringScraper):
                 print(f"  -> Could not find search input", flush=True)
                 return None, None, None
 
-            search_input.clear()
-            search_input.send_keys(keyword)
-            search_input.send_keys(u'\ue007')
-            time.sleep(4)
+            search_input.fill(keyword)
+            search_input.press("Enter")
+            self.page.wait_for_timeout(4000)
 
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            soup = BeautifulSoup(self.page.content(), 'html.parser')
             page_text = soup.get_text()
 
             # 모든 상품 카드/리스트 아이템 찾기
@@ -738,12 +741,19 @@ def fill_sikbom_prices(master_file, target_date):
 
 
 if __name__ == "__main__":
+    import sys
     parser = argparse.ArgumentParser()
     parser.add_argument("--master", required=True)
     parser.add_argument("--date", required=True)
     args = parser.parse_args()
 
-    fill_sikbom_prices(args.master, args.date)
+    try:
+        fill_sikbom_prices(args.master, args.date)
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)
 
     from _notify import notify
     notify("stage3_sikbom", date_str=args.date)

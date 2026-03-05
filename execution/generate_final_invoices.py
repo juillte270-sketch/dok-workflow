@@ -551,7 +551,9 @@ def main():
     args = parser.parse_args()
 
     try: target_date = datetime.strptime(args.date, "%Y-%m-%d").date()
-    except: return
+    except:
+        print(f"FAILED: Invalid date format: {args.date}", flush=True)
+        import sys; sys.exit(1)
 
     # Override master file if specified
     global MASTER_FILE
@@ -565,8 +567,8 @@ def main():
     
     src_dir = os.path.join(PROJECT_ROOT, "data", "outputs", f"invoices_{target_date.strftime('%Y%m%d')}")
     if not os.path.exists(src_dir):
-        print(f"❌ 가명세서 폴더 없음")
-        return
+        print(f"FAILED: 가명세서 폴더 없음: {src_dir}", flush=True)
+        import sys; sys.exit(1)
         
     invoices = glob.glob(os.path.join(src_dir, "*.xlsx"))
     invoices = [f for f in invoices if not os.path.basename(f).startswith("~")]
@@ -614,4 +616,11 @@ def main():
     notify("stage8_final", date_str=args.date)
 
 if __name__ == "__main__":
-    main()
+    import sys
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)

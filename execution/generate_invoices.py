@@ -617,4 +617,11 @@ def main():
         print("\nNo invoices created.")
 
 if __name__ == "__main__":
-    main()
+    import sys
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)

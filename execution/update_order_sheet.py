@@ -332,6 +332,14 @@ def update_order_sheet():
         import traceback
         print(f"Error updating excel: {e}")
         traceback.print_exc()
+        import sys; sys.exit(1)
 
 if __name__ == "__main__":
-    update_order_sheet()
+    import sys
+    try:
+        update_order_sheet()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback; traceback.print_exc()
+        sys.exit(1)

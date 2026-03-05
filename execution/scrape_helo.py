@@ -814,7 +814,11 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="미리보기 (저장 안함)")
     args = parser.parse_args()
 
+    import sys
     result = scrape_helo(args.date, args.extract_only, args.dry_run, args.master)
     if result is not None:
         from _notify import notify
         notify("stage4_helo", date_str=args.date)
+    else:
+        print("FAILED: HELO scraping returned no data.", flush=True)
+        sys.exit(1)
