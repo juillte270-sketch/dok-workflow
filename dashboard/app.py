@@ -251,25 +251,23 @@ st.markdown("""
     }
 
     /* === Mobile Responsive — 768px 이하 === */
+    /*
+     * 핵심 원칙:
+     * 1. padding-top 건드리지 않음 (Streamlit 헤더가 position:fixed이므로 기본값 필요)
+     * 2. st.columns + flex-wrap:nowrap 쓰지 않음 (뷰포트 넘침 유발)
+     * 3. 콘텐츠 자체를 컴팩트하게 (여백/폰트/간격 축소)
+     */
     @media (max-width: 768px) {
-        /* Streamlit 헤더/툴바 최소화 (사이드바 토글만 유지) */
-        header[data-testid="stHeader"] {
-            height: 2rem !important;
-            min-height: 2rem !important;
-        }
-        [data-testid="stToolbar"] {
-            display: none !important;
-        }
-        [data-testid="stDecoration"] {
-            display: none !important;
+        /* 좌우 패딩만 축소 — padding-top은 Streamlit 기본값 유지 */
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-bottom: 1rem !important;
         }
 
-        /* 컨테이너 패딩 최소화 */
-        .block-container {
-            padding-top: 0.25rem !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            padding-bottom: 1rem !important;
+        /* 요소 간 세로 간격 축소 */
+        [data-testid="stVerticalBlock"] {
+            gap: 0.3rem !important;
         }
 
         /* 사이드바 최소 너비 해제 */
@@ -282,33 +280,11 @@ st.markdown("""
         h2 { font-size: 1.05rem !important; }
         h3 { font-size: 0.95rem !important; }
 
-        /* Column 가로 유지 — Streamlit 내부 CSS보다 높은 specificity */
-        [data-testid="stMain"] [data-testid="stHorizontalBlock"],
-        .main [data-testid="stHorizontalBlock"],
-        div[data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
-            gap: 0.2rem !important;
-        }
-        [data-testid="stMain"] [data-testid="column"],
-        .main [data-testid="column"],
-        div[data-testid="column"] {
-            min-width: 0 !important;
-            width: auto !important;
-            flex: 1 1 0% !important;
-        }
-
-        /* 요소 간 세로 간격 축소 */
-        [data-testid="stMain"] [data-testid="stVerticalBlock"],
-        div[data-testid="stVerticalBlock"] {
-            gap: 0.25rem !important;
-        }
-
-        /* 버튼 — 콤팩트 + 텍스트 잘림 방지 */
+        /* 버튼 — 터치 친화적 + 콤팩트 */
         .stButton > button {
-            padding: 0.25rem 0.4rem !important;
-            font-size: 0.78rem !important;
-            min-height: 34px !important;
-            white-space: nowrap !important;
+            padding: 0.4rem 0.6rem !important;
+            font-size: 0.82rem !important;
+            min-height: 40px !important;
         }
 
         /* 탭 — 콤팩트 */
@@ -323,14 +299,7 @@ st.markdown("""
             border-radius: 10px !important;
         }
 
-        /* 스텝 번호 — 약간 축소 */
-        .step-num {
-            width: 24px !important;
-            height: 24px !important;
-            font-size: 0.7rem !important;
-        }
-
-        /* 코드/로그 영역 — 가로 스크롤 허용 */
+        /* 코드/로그 영역 */
         pre, code, .log-area {
             font-size: 0.72rem !important;
             word-break: break-all !important;
@@ -347,15 +316,11 @@ st.markdown("""
             font-size: 0.88rem !important;
         }
 
-        /* 캡션 — 가독성 확보 */
-        .stCaption, [data-testid="stCaptionContainer"] {
-            font-size: 0.78rem !important;
-        }
-
-        /* 배지 — 약간 축소 */
+        /* 캡션/배지 */
+        .stCaption, [data-testid="stCaptionContainer"] { font-size: 0.78rem !important; }
         .badge { font-size: 0.75rem !important; }
 
-        /* 텍스트 영역 / 입력 — 풀 너비 */
+        /* 텍스트 입력 */
         .stTextArea textarea,
         .stSelectbox,
         .stDateInput {
@@ -366,31 +331,15 @@ st.markdown("""
     /* === 초소형 모바일 — 480px 이하 === */
     @media (max-width: 480px) {
         .block-container {
-            padding-left: 0.4rem !important;
-            padding-right: 0.4rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }
-
         h1 { font-size: 1.1rem !important; }
-
-        [data-testid="stMetricValue"] {
-            font-size: 0.9rem !important;
-        }
-
-        /* 세로 간격 더 축소 */
         [data-testid="stVerticalBlock"] {
-            gap: 0.15rem !important;
+            gap: 0.2rem !important;
         }
-
-        /* 사이드바 내 타이틀 축소 */
         section[data-testid="stSidebar"] h3 {
             font-size: 0.9rem !important;
-        }
-
-        /* 스텝 번호 더 축소 */
-        .step-num-sm {
-            width: 18px !important;
-            height: 18px !important;
-            font-size: 0.6rem !important;
         }
     }
 </style>
