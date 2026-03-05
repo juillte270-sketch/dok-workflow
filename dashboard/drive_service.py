@@ -16,7 +16,7 @@ _drive_service = None
 
 def is_cloud() -> bool:
     """Detect if running in cloud environment (no local Google Drive mount)."""
-    # Windows with G:\ mount = local mode
+    # Windows with G: drive mount = local mode
     if os.name == "nt":
         g_drive = Path(r"G:\내 드라이브")
         if g_drive.exists():
