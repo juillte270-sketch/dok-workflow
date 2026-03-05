@@ -13,6 +13,17 @@ from typing import Optional, Tuple
 
 from dashboard.drive_service import is_cloud
 
+# KST 타임존 (Cloud 서버는 UTC)
+_KST = datetime.timezone(datetime.timedelta(hours=9))
+
+
+def now_kst() -> datetime.datetime:
+    """현재 시각을 KST로 반환 (Cloud=UTC→KST 변환, 로컬=시스템 시간)."""
+    if is_cloud():
+        return datetime.datetime.now(_KST).replace(tzinfo=None)
+    return datetime.datetime.now()
+
+
 # Project root (parent of dashboard/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 EXECUTION_DIR = PROJECT_ROOT / "execution"
@@ -35,11 +46,11 @@ DEFAULT_MASTER = r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단�
 
 # --------------- Date utilities ---------------
 def today_str(fmt: str = "%Y-%m-%d") -> str:
-    return datetime.date.today().strftime(fmt)
+    return now_kst().strftime(fmt)
 
 
 def today_compact() -> str:
-    return datetime.date.today().strftime("%Y%m%d")
+    return now_kst().strftime("%Y%m%d")
 
 
 def date_to_compact(date_str: str) -> str:
@@ -298,7 +309,7 @@ def mark_stage(stage_id: str, status: str = "completed", extra: dict = None, dat
     prog = load_progress(date_str)
     entry = {
         "status": status,
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
     }
     if extra:
         entry.update(extra)
@@ -311,7 +322,7 @@ def mark_stage(stage_id: str, status: str = "completed", extra: dict = None, dat
 def _recover_stale_running(progress: dict, date_str: str = None) -> bool:
     """Auto-recover stages stuck in 'running' for >15 minutes."""
     STALE_SECONDS = 900  # 15 minutes
-    now = datetime.datetime.now()
+    now = now_kst()
     changed = False
     for stage_id, entry in progress.items():
         if not isinstance(entry, dict) or entry.get("status") != "running":
@@ -355,7 +366,7 @@ def _append_history(stage_id: str, status: str, extra: dict = None, date_str: st
     entry = {
         "stage_id": stage_id,
         "status": status,
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": now_kst().isoformat(),
         **(extra or {}),
     }
     try:
@@ -389,7 +400,7 @@ def _log_path(date_str: str = None) -> Path:
 
 
 def append_log(message: str, level: str = "INFO", date_str: str = None):
-    ts = datetime.datetime.now().strftime("%H:%M:%S")
+    ts = now_kst().strftime("%H:%M:%S")
     line = f"[{ts}] [{level}] {message}\n"
     try:
         with open(_log_path(date_str), "a", encoding="utf-8") as f:
@@ -654,7 +665,7 @@ def acquire_lock(script_name: str) -> bool:
                 lock_data = json.load(f)
             # Check if lock is stale (>15 min old)
             lock_time = datetime.datetime.fromisoformat(lock_data.get("timestamp", "2000-01-01"))
-            if (datetime.datetime.now() - lock_time).total_seconds() > 900:
+            if (now_kst() - lock_time).total_seconds() > 900:
                 # Stale lock, remove
                 LOCK_FILE.unlink(missing_ok=True)
             else:
@@ -666,7 +677,7 @@ def acquire_lock(script_name: str) -> bool:
         with open(LOCK_FILE, "w") as f:
             json.dump({
                 "script": script_name,
-                "timestamp": datetime.datetime.now().isoformat(),
+                "timestamp": now_kst().isoformat(),
             }, f)
         return True
     except Exception:
@@ -701,7 +712,7 @@ def backup_master_file(settings: dict = None) -> Optional[Path]:
     if not master.exists():
         return None
 
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = now_kst().strftime("%Y%m%d_%H%M%S")
     backup_path = BACKUP_DIR / f"backup_{ts}_{master.name}"
 
     try:
