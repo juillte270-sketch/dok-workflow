@@ -15,6 +15,66 @@ from dashboard.drive_service import is_cloud
 CLOUD_DISABLED_STAGES = set()
 
 
+def _render_master_selector(settings):
+    """Compact master file selector at top of main dashboard."""
+    from pathlib import Path
+    cloud_mode = is_cloud()
+
+    if cloud_mode:
+        from dashboard.drive_service import check_drive_connection
+        ok, msg = check_drive_connection()
+        icon = "🟢" if ok else "🔴"
+        short_msg = msg.split("(")[0].strip() if ok else msg
+        st.caption(f"{icon} Drive: {short_msg}")
+        return
+
+    master_dir = Path(r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단가_자료")
+    xlsx_files = []
+    if master_dir.exists():
+        xlsx_files = sorted(
+            [f for f in master_dir.glob("도크발주관리데이터*.xlsx")
+             if not f.name.startswith("~$")],
+            key=lambda f: f.stat().st_mtime, reverse=True,
+        )
+
+    current_master = settings.get("master_file", "")
+
+    if xlsx_files:
+        options = [str(f) for f in xlsx_files]
+        labels = []
+        for f in xlsx_files:
+            size_mb = f.stat().st_size / (1024 * 1024)
+            is_prod = f.name == "도크발주관리데이터.xlsx"
+            tag = "운영" if is_prod else "테스트"
+            labels.append(f"[{tag}] {f.name} ({size_mb:.1f}MB)")
+
+        try:
+            current_idx = options.index(current_master)
+        except ValueError:
+            current_idx = 0
+
+        selected_idx = st.selectbox(
+            "마스터 파일",
+            range(len(options)),
+            index=current_idx,
+            format_func=lambda i: labels[i],
+            key="main_master_select",
+            label_visibility="collapsed",
+        )
+
+        if options[selected_idx] != current_master:
+            settings["master_file"] = options[selected_idx]
+            from dashboard.utils import save_settings
+            save_settings(settings)
+            st.rerun()
+    else:
+        p = Path(current_master)
+        if p.exists():
+            st.caption(f"📁 {p.name}")
+        else:
+            st.caption("⚠️ 마스터 파일 없음")
+
+
 def _get_receipt_dir():
     """카카오톡 다운로드 폴더 경로 (p0_main용)."""
     user_profile = os.environ.get('USERPROFILE', '')
@@ -35,55 +95,40 @@ def render(get_date_str, get_date_compact):
     settings = load_settings()
     progress = load_progress(date_str)
 
-    # Top: title + progress on one line
+    # --- Master file quick selector ---
+    _render_master_selector(settings)
+
+    # Top: title + metrics (pure HTML — no st.columns, always horizontal)
     completed = count_completed(date_str)
     total = len(STAGES)
     failed = sum(1 for v in progress.values() if isinstance(v, dict) and v.get("status") == "failed")
+    waiting = total - completed - failed
 
-    c_title, c_progress = st.columns([3, 1])
-    with c_title:
-        st.markdown("### 업무 현황")
-    with c_progress:
-        st.markdown(
-            f"<p style='text-align:right; color:#94A3B8; margin-top:8px; font-size:0.95rem'>"
-            f"<b style='color:#E2E8F0; font-size:1.3rem'>{completed}</b>/{total} 완료</p>",
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+        f'<b style="font-size:1.1rem;flex:1">업무 현황</b>'
+        f'<div style="display:flex;gap:6px">'
+        f'<span style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:3px 10px;font-size:0.8rem">'
+        f'<span style="color:#94A3B8">완료</span> <b style="color:#4ADE80">{completed}/{total}</b></span>'
+        f'<span style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:3px 10px;font-size:0.8rem">'
+        f'<span style="color:#94A3B8">실패</span> <b style="color:#F87171">{failed}</b></span>'
+        f'<span style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:3px 10px;font-size:0.8rem">'
+        f'<span style="color:#94A3B8">대기</span> <b style="color:#E2E8F0">{waiting}</b></span>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
 
-    # Metrics row
-    col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("완료", f"{completed}/{total}")
-    col_m2.metric("실패", failed)
-    col_m3.metric("대기", total - completed - failed)
-
-    # Batch execution — 3 columns
-    st.markdown("")  # spacing
+    # Batch buttons
     col_batch, col_kakao, col_reset = st.columns(3)
     with col_batch:
-        if st.button("일괄 실행 (1→5)", type="primary", key="btn_batch_morning"):
+        if st.button("일괄 (1→5)", type="primary", key="btn_batch_morning"):
             _run_batch_morning(date_str, settings)
     with col_kakao:
-        if st.button("카톡 요약 전송", key="btn_kakao_summary"):
+        if st.button("카톡 전송", key="btn_kakao_summary"):
             _send_kakao_summary(date_str, progress)
     with col_reset:
-        if st.button("진행상황 초기화", key="btn_reset_progress"):
+        if st.button("초기화", key="btn_reset_progress"):
             _reset_progress(date_str)
-
-    # Batch preview
-    batch_stages = ["stage1", "stage2_order", "stage2_invoice", "stage3_price", "stage3_sikbom"]
-    will_run = []
-    will_skip = []
-    for sid in batch_stages:
-        stage = STAGE_MAP[sid]
-        current_status = progress.get(sid, {}).get("status")
-        if current_status == "completed":
-            will_skip.append(stage["name"])
-        else:
-            will_run.append(stage["name"])
-    if will_skip:
-        st.caption(f"건너뜀: {', '.join(will_skip)} | 실행 예정: {', '.join(will_run) if will_run else '없음 (모두 완료)'}")
-
-    st.markdown("")  # spacing
 
     # Stage-by-stage control (compact 2-column layout)
     for s in STAGES:
@@ -94,7 +139,7 @@ def render(get_date_str, get_date_compact):
         sub = s.get("sub", "")
         sub_html = f' <span style="color:#64748B;font-size:0.75rem">{sub}</span>' if sub else ""
 
-        c_info, c_btn = st.columns([4, 1])
+        c_info, c_btn = st.columns([3.5, 1])
         c_info.markdown(
             f'<div style="display:flex;align-items:center;gap:6px;min-height:32px">'
             f'<span class="step-num-sm">{s["icon"]}</span>'
