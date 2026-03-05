@@ -373,16 +373,20 @@ def create_docx(input_file, mappings_file, output_file, target_date=None):
             table = doc.add_table(1, 3)
             row = table.rows[0]
 
-            # Collect all section data in order
+            # Collect all section data in order, separating 동원1차 for special placement
             ordered_sections = []
+            dongwon_sections = []
             for keyword in page_def:
                 matched = [name for name in sections.keys() if keyword in name]
                 for section_name in matched:
-                    ordered_sections.append(sections[section_name])
+                    if '동원1차' in section_name:
+                        dongwon_sections.append(sections[section_name])
+                    else:
+                        ordered_sections.append(sections[section_name])
 
             # Calculate total lines and distribute evenly across 3 columns
             total_lines = sum(len(s) for s in ordered_sections)
-            target_lines_per_col = total_lines / 3
+            target_lines_per_col = total_lines / 3 if total_lines > 0 else 0
 
             columns_data = [[], [], []]
             current_col = 0
@@ -396,6 +400,12 @@ def create_docx(input_file, mappings_file, output_file, target_date=None):
                     current_col_lines = 0
                 columns_data[current_col].extend(section_lines)
                 current_col_lines += line_count
+
+            # Place 동원1차 in the column with fewest lines (most empty space)
+            for dw_lines in dongwon_sections:
+                col_lengths = [len(c) for c in columns_data]
+                min_col = col_lengths.index(min(col_lengths))
+                columns_data[min_col].extend(dw_lines)
 
             # Auto-fit font size to prevent page overflow
             optimal_font = calculate_optimal_font_size(columns_data, max_font=15, min_font=9)

@@ -21,6 +21,9 @@ from dashboard.utils import (
 )
 from dashboard.drive_service import is_cloud
 
+# Drive 영수증 폴더 ID 캐시
+_receipt_folder_id = None
+
 # PID 파일 경로 (실행 중인 프로세스 추적)
 _PID_FILE = os.path.join(PROJECT_ROOT, 'dashboard', 'state', 'receipt_pid.json')
 _LOG_FILE = os.path.join(PROJECT_ROOT, 'dashboard', 'state', 'receipt_live_log.txt')
@@ -377,8 +380,143 @@ def render(get_date_str, get_date_compact):
         _render_manual_input(settings, date_str, master_ok)
 
 
+def _get_receipt_folder_id():
+    """Drive 카톡 영수증 폴더 ID (마스터 파일 부모 → '카톡 영수증' 서브폴더)."""
+    global _receipt_folder_id
+    if _receipt_folder_id:
+        return _receipt_folder_id
+    from dashboard.drive_service import (
+        get_drive_service, get_drive_file_ids, find_or_create_subfolder,
+    )
+    service = get_drive_service()
+    file_ids = get_drive_file_ids()
+    master_id = file_ids.get("master_file_id")
+    meta = service.files().get(fileId=master_id, fields="parents").execute()
+    parent_id = meta.get("parents", [None])[0]
+    _receipt_folder_id = find_or_create_subfolder(parent_id, "카톡 영수증")
+    return _receipt_folder_id
+
+
+def _list_drive_receipts(since_hours=24):
+    """Drive 카톡 영수증 폴더에서 최근 이미지 목록."""
+    from dashboard.drive_service import list_folder
+    folder_id = _get_receipt_folder_id()
+    all_files = list_folder(folder_id)
+
+    image_types = {"image/jpeg", "image/png", "image/bmp"}
+    cutoff = datetime.now() - timedelta(hours=since_hours)
+
+    result = []
+    for f in all_files:
+        if f.get("mimeType") not in image_types:
+            continue
+        mod_time = datetime.fromisoformat(f["modifiedTime"].replace("Z", "+00:00"))
+        mod_local = mod_time.astimezone().replace(tzinfo=None)
+        if mod_local < cutoff:
+            continue
+        result.append({
+            "id": f["id"],
+            "name": f["name"],
+            "mtime": mod_local,
+            "size_kb": round(int(f.get("size", 0)) / 1024, 1),
+        })
+    return result
+
+
+def _process_drive_receipts(images, master_path, date_str, dry_run, from_drive):
+    """Drive 이미지 다운로드 → parse_receipt → fill_receipt_prices → sync."""
+    from dashboard.drive_service import download_file_by_id
+
+    exec_dir = os.path.join(PROJECT_ROOT, 'execution')
+    if exec_dir not in sys.path:
+        sys.path.insert(0, exec_dir)
+
+    try:
+        import streamlit as _st
+        gemini_key = _st.secrets.get("GEMINI_API_KEY", "")
+        if gemini_key and not os.environ.get("GEMINI_API_KEY"):
+            os.environ["GEMINI_API_KEY"] = gemini_key
+    except Exception:
+        pass
+
+    from parse_receipt import parse_receipt
+    from fill_receipt_prices import fill_receipt_prices
+
+    mark_stage("stage_receipt", "running", date_str=date_str)
+    all_receipts = []
+    output_lines = []
+    start_t = time.time()
+
+    with st.spinner(f"Drive 영수증 파싱 중... ({len(images)}개)"):
+        for img in images:
+            tmp_path = download_file_by_id(img["id"])
+            try:
+                result = parse_receipt(image_path=tmp_path)
+                if "error" in result:
+                    output_lines.append(f"[WARN] {img['name']}: {result['error']}")
+                else:
+                    result["source_file"] = img["name"]
+                    all_receipts.append(result)
+                    n_items = len(result.get("items", []))
+                    supplier = result.get("supplier", "?")
+                    output_lines.append(f"[PARSE] {img['name']}: {supplier} ({n_items}개 품목)")
+            except Exception as e:
+                output_lines.append(f"[WARN] {img['name']}: 파싱 실패 - {e}")
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+
+    if not all_receipts:
+        elapsed = time.time() - start_t
+        mark_stage("stage_receipt", "failed", {"error": "파싱된 영수증 없음"}, date_str=date_str)
+        st.warning("파싱된 영수증이 없습니다.")
+        if output_lines:
+            st.code('\n'.join(output_lines), language="text")
+        return
+
+    with st.spinner("단가시트 매입가 입력 중..."):
+        try:
+            fill_result = fill_receipt_prices(
+                master_file=master_path,
+                target_date=date_str,
+                receipts=all_receipts,
+                dry_run=dry_run,
+            )
+            for detail in fill_result.get("details", []):
+                output_lines.append(detail)
+        except Exception as e:
+            elapsed = time.time() - start_t
+            mark_stage("stage_receipt", "failed", {"error": str(e)[-500:]}, date_str=date_str)
+            st.error(f"매입가 입력 실패: {e}")
+            if output_lines:
+                st.code('\n'.join(output_lines), language="text")
+            return
+
+    elapsed = time.time() - start_t
+
+    if from_drive and not dry_run:
+        try:
+            sync_master_back(master_path)
+            output_lines.append("[SYNC] Drive 업로드 완료")
+        except Exception as e:
+            output_lines.append(f"[WARN] Drive 업로드 실패: {e}")
+
+    if not dry_run:
+        mark_stage("stage_receipt", "completed", {"elapsed": elapsed}, date_str=date_str)
+        append_log(f"영수증 Drive 처리 완료 ({len(images)}개, {format_elapsed(elapsed)})")
+        st.toast(f"영수증 처리 완료 ({format_elapsed(elapsed)})")
+    else:
+        mark_stage("stage_receipt", "pending", date_str=date_str)
+        st.info("미리보기 모드 - 실제 입력되지 않았습니다.")
+
+    stdout_text = '\n'.join(output_lines)
+    _show_batch_result(stdout_text, "")
+
+
 def _render_cloud_mode(date_str, settings):
-    """Cloud 환경: file uploader → Gemini 파싱 → 단가시트 입력."""
+    """Cloud 환경: Drive 영수증 + file uploader → Gemini 파싱 → 단가시트 입력."""
     master_path, from_drive = resolve_master_path(settings)
 
     # 스테이지 상태
@@ -390,7 +528,76 @@ def _render_cloud_mode(date_str, settings):
 
     st.divider()
 
-    # 파일 업로드
+    tab_drive, tab_upload = st.tabs(["Drive 영수증", "직접 업로드"])
+
+    with tab_drive:
+        _render_drive_tab(master_path, date_str, from_drive)
+
+    with tab_upload:
+        _render_upload_tab(master_path, date_str, from_drive)
+
+    # 개별 입력 (URL/텍스트) — Cloud에서도 작동
+    st.divider()
+    with st.expander("개별 영수증 입력 (URL/텍스트)"):
+        _render_manual_input_cloud(master_path, date_str, from_drive)
+
+
+def _render_drive_tab(master_path, date_str, from_drive):
+    """Drive 카톡 영수증 폴더에서 이미지 목록 → 일괄 처리."""
+    import pandas as pd
+
+    col_list, col_action = st.columns([3, 1])
+    with col_action:
+        since_hours = st.selectbox(
+            "기간 필터",
+            [6, 12, 24, 48],
+            index=2,
+            format_func=lambda h: f"최근 {h}시간",
+            key="drive_receipt_since_hours",
+        )
+
+    try:
+        images = _list_drive_receipts(since_hours)
+    except Exception as e:
+        st.error(f"Drive 폴더 접근 실패: {e}")
+        return
+
+    with col_list:
+        st.subheader(f"Drive 영수증 ({len(images)}개)")
+
+    if not images:
+        st.info(f"최근 {since_hours}시간 이내 이미지가 없습니다.")
+        return
+
+    # 이미지 목록 테이블
+    table_data = []
+    for img in images:
+        table_data.append({
+            "파일명": img["name"],
+            "시간": img["mtime"].strftime("%H:%M"),
+            "크기": f"{img['size_kb']:.0f}KB",
+        })
+    df = pd.DataFrame(table_data)
+    st.dataframe(df, use_container_width=True, height=min(len(images) * 35 + 38, 300))
+
+    # 옵션 + 실행 버튼
+    col_btn, col_opt = st.columns([2, 1])
+    with col_opt:
+        dry_run = st.checkbox("미리보기만 (dry-run)", value=False, key="drive_receipt_dry")
+
+    with col_btn:
+        btn_label = f"영수증 일괄 처리 ({len(images)}개)" if not dry_run else f"미리보기 실행 ({len(images)}개)"
+        if st.button(
+            btn_label,
+            type="primary",
+            key="btn_drive_receipt",
+            disabled=not images,
+        ):
+            _process_drive_receipts(images, master_path, date_str, dry_run, from_drive)
+
+
+def _render_upload_tab(master_path, date_str, from_drive):
+    """기존 파일 업로드 방식."""
     uploaded_files = st.file_uploader(
         "영수증 이미지 업로드",
         type=["jpg", "jpeg", "png", "bmp"],
@@ -401,7 +608,6 @@ def _render_cloud_mode(date_str, settings):
     if uploaded_files:
         st.caption(f"{len(uploaded_files)}개 이미지 선택됨")
 
-        # 미리보기
         with st.expander(f"이미지 미리보기 ({len(uploaded_files)}개)", expanded=False):
             cols = st.columns(3)
             for i, uf in enumerate(uploaded_files):
@@ -410,7 +616,6 @@ def _render_cloud_mode(date_str, settings):
 
     st.divider()
 
-    # 옵션
     col_btn, col_opt = st.columns([2, 1])
     with col_opt:
         dry_run = st.checkbox("미리보기만 (dry-run)", value=False, key="cloud_receipt_dry")
@@ -425,11 +630,6 @@ def _render_cloud_mode(date_str, settings):
             disabled=not uploaded_files,
         ):
             _process_cloud_receipts(uploaded_files, master_path, date_str, dry_run, from_drive)
-
-    # 개별 입력 (URL/텍스트) — Cloud에서도 작동
-    st.divider()
-    with st.expander("개별 영수증 입력 (URL/텍스트)"):
-        _render_manual_input_cloud(master_path, date_str, from_drive)
 
 
 def _process_cloud_receipts(uploaded_files, master_path, date_str, dry_run, from_drive):
