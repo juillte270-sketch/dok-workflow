@@ -229,17 +229,18 @@ def fill_receipt_prices(master_file, target_date, receipts, dry_run=False):
 
             row_idx = row_info['row']
 
-            # 사용할 가격 결정 (unit_price × qty가 total과 일치하는지 검증)
+            # 사용할 가격 결정: 항상 unit_price(1개 단가) 우선
             qty = item.get('qty', 1) or 1
-            if unit_price > 0 and total > 0:
-                calculated_total = unit_price * qty
-                if abs(calculated_total - total) > total * 0.1:  # 10% 이상 차이
-                    print(f"  [WARN] {receipt_name}: unit_price {unit_price} × qty={qty} = {calculated_total} ≠ total {total} → total 사용")
-                    price = total
-                else:
-                    price = unit_price
+            if unit_price > 0:
+                price = unit_price
+                # qty > 1인데 unit_price == total이면 → total/qty가 진짜 단가
+                if qty > 1 and total > 0 and abs(unit_price - total) < 10:
+                    price = round(total / qty)
+                    print(f"  [FIX] {receipt_name}: unit_price={unit_price} == total={total}, qty={qty} → 단가 {price}")
+            elif total > 0:
+                price = round(total / qty) if qty > 1 else total
             else:
-                price = unit_price if unit_price > 0 else total
+                price = 0
             if price <= 0:
                 print(f"  [SKIP] {receipt_name} → 가격 0")
                 skipped += 1
