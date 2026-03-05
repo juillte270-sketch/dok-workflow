@@ -423,23 +423,114 @@ def _list_drive_receipts(since_hours=24):
     return result
 
 
+def _get_gemini_api_key():
+    """Streamlit secrets 또는 환경변수에서 Gemini API 키 로드."""
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        try:
+            import streamlit as _st
+            api_key = _st.secrets.get("GEMINI_API_KEY", "")
+        except Exception:
+            pass
+    return api_key
+
+
+def _gemini_rest_call(image_path, prompt):
+    """Gemini REST API로 이미지 + 프롬프트 호출. SDK 없이 requests만 사용."""
+    import base64
+    import mimetypes
+    import requests as req
+
+    api_key = _get_gemini_api_key()
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
+
+    mime_type = mimetypes.guess_type(image_path)[0] or "image/jpeg"
+    with open(image_path, "rb") as f:
+        image_b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": mime_type, "data": image_b64}},
+            ]
+        }]
+    }
+    resp = req.post(url, json=payload, timeout=60)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+
+def _parse_receipt_rest(image_path):
+    """REST API로 영수증 전체 파싱 (SDK 불필요). parse_receipt.parse_image_receipt 대체."""
+    import re as _re
+
+    exec_dir = os.path.join(PROJECT_ROOT, 'execution')
+    if exec_dir not in sys.path:
+        sys.path.insert(0, exec_dir)
+    from parse_receipt import detect_supplier_from_text, PRICE_MULTIPLIER
+
+    prompt = """이 영수증/거래명세서 이미지에서 품목명과 단가(금액)를 추출해주세요.
+
+반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
+{
+  "supplier_detected": "영수증에서 확인된 상호명 (없으면 null)",
+  "items": [
+    {"name": "품목명", "qty": 수량(숫자), "unit_price": 단가(숫자), "total": 금액(숫자)}
+  ]
+}
+
+규칙:
+- 품목명은 영수증에 적힌 그대로 (약어, 슬래시 포함)
+- 단가와 금액은 원(₩) 단위 정수
+- 수량이 명확히 표시되지 않으면 qty=1, unit_price=0, total=표시금액으로 설정
+- 합계/부가세/총액 행은 제외
+- 금액이 0이거나 빈 행은 제외
+- 손글씨에서 "13,-" 또는 "13,―" 표기는 13,000원을 의미함
+- 거래명세서 양식의 컬럼: 월/일, 품목, 단위, 수량, 단가, 공급가액 — 단가 컬럼의 값을 unit_price로 사용"""
+
+    text = _gemini_rest_call(image_path, prompt)
+
+    # JSON 추출 (마크다운 코드블록 제거)
+    if "```" in text:
+        match = _re.search(r"```(?:json)?\s*(.*?)```", text, _re.DOTALL)
+        if match:
+            text = match.group(1).strip()
+
+    result = json.loads(text)
+    items = result.get("items", [])
+    supplier_detected = result.get("supplier_detected")
+
+    supplier = None
+    if supplier_detected:
+        supplier = detect_supplier_from_text(supplier_detected)
+
+    # 가격 배수 적용
+    multiplier = PRICE_MULTIPLIER.get(supplier, 1)
+    if multiplier != 1:
+        for item in items:
+            item["unit_price"] = item.get("unit_price", 0) * multiplier
+            item["total"] = item.get("total", 0) * multiplier
+
+    return {
+        "supplier": supplier or supplier_detected,
+        "confidence": "medium",
+        "source": "gemini_rest_ocr",
+        "items": items,
+    }
+
+
 def _process_drive_receipts(images, master_path, date_str, dry_run, from_drive):
-    """Drive 이미지 다운로드 → parse_receipt → fill_receipt_prices → sync."""
+    """Drive 이미지 다운로드 → REST API 파싱 → fill_receipt_prices → sync."""
     from dashboard.drive_service import download_file_by_id
 
     exec_dir = os.path.join(PROJECT_ROOT, 'execution')
     if exec_dir not in sys.path:
         sys.path.insert(0, exec_dir)
 
-    try:
-        import streamlit as _st
-        gemini_key = _st.secrets.get("GEMINI_API_KEY", "")
-        if gemini_key and not os.environ.get("GEMINI_API_KEY"):
-            os.environ["GEMINI_API_KEY"] = gemini_key
-    except Exception:
-        pass
-
-    from parse_receipt import parse_receipt
     from fill_receipt_prices import fill_receipt_prices
 
     mark_stage("stage_receipt", "running", date_str=date_str)
@@ -451,7 +542,7 @@ def _process_drive_receipts(images, master_path, date_str, dry_run, from_drive):
         for img in images:
             tmp_path = download_file_by_id(img["id"])
             try:
-                result = parse_receipt(image_path=tmp_path)
+                result = _parse_receipt_rest(tmp_path)
                 if "error" in result:
                     output_lines.append(f"[WARN] {img['name']}: {result['error']}")
                 else:
@@ -608,22 +699,19 @@ def _render_drive_tab(master_path, date_str, from_drive):
 
 
 def _identify_drive_suppliers(images):
-    """Drive 영수증 이미지를 다운로드하여 Gemini로 공급처 식별."""
+    """Drive 영수증 이미지를 다운로드하여 Gemini REST API로 공급처 식별."""
     from dashboard.drive_service import download_file_by_id
 
     exec_dir = os.path.join(PROJECT_ROOT, 'execution')
     if exec_dir not in sys.path:
         sys.path.insert(0, exec_dir)
+    from parse_receipt import detect_supplier_from_text
 
-    try:
-        import streamlit as _st
-        gemini_key = _st.secrets.get("GEMINI_API_KEY", "")
-        if gemini_key and not os.environ.get("GEMINI_API_KEY"):
-            os.environ["GEMINI_API_KEY"] = gemini_key
-    except Exception:
-        pass
-
-    from parse_receipt import identify_supplier_from_image
+    prompt = (
+        "이 영수증/거래명세서 이미지에서 상호명(공급업체명)만 한 줄로 답하세요. "
+        "상호명이 보이지 않으면 '불명'이라고 답하세요. "
+        "다른 설명 없이 상호명만 출력하세요."
+    )
 
     supplier_map = {}
     progress = st.progress(0, text="공급처 식별 중...")
@@ -632,8 +720,9 @@ def _identify_drive_suppliers(images):
         progress.progress((i + 1) / len(images), text=f"공급처 식별 중... ({i+1}/{len(images)})")
         tmp_path = download_file_by_id(img["id"])
         try:
-            supplier = identify_supplier_from_image(tmp_path)
-            supplier_map[img["name"]] = supplier
+            raw_name = _gemini_rest_call(tmp_path, prompt).strip('"').strip("'")
+            mapped = detect_supplier_from_text(raw_name)
+            supplier_map[img["name"]] = mapped or raw_name
         except Exception as e:
             supplier_map[img["name"]] = f"오류({e})"
         finally:
@@ -685,22 +774,11 @@ def _render_upload_tab(master_path, date_str, from_drive):
 
 
 def _process_cloud_receipts(uploaded_files, master_path, date_str, dry_run, from_drive):
-    """Cloud: 업로드된 이미지 → temp 저장 → parse_receipt → fill_receipt_prices → sync."""
-    # Ensure execution/ is in path
+    """Cloud: 업로드된 이미지 → temp 저장 → REST API 파싱 → fill_receipt_prices → sync."""
     exec_dir = os.path.join(PROJECT_ROOT, 'execution')
     if exec_dir not in sys.path:
         sys.path.insert(0, exec_dir)
 
-    # Set GEMINI_API_KEY from Streamlit secrets if not in env
-    try:
-        import streamlit as _st
-        gemini_key = _st.secrets.get("GEMINI_API_KEY", "")
-        if gemini_key and not os.environ.get("GEMINI_API_KEY"):
-            os.environ["GEMINI_API_KEY"] = gemini_key
-    except Exception:
-        pass
-
-    from parse_receipt import parse_receipt, map_to_danga_items
     from fill_receipt_prices import fill_receipt_prices
 
     mark_stage("stage_receipt", "running", date_str=date_str)
@@ -710,14 +788,13 @@ def _process_cloud_receipts(uploaded_files, master_path, date_str, dry_run, from
 
     with st.spinner(f"영수증 파싱 중... ({len(uploaded_files)}개)"):
         for uf in uploaded_files:
-            # temp 파일 저장
             suffix = os.path.splitext(uf.name)[1] or ".jpg"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(uf.getbuffer())
                 tmp_path = tmp.name
 
             try:
-                result = parse_receipt(image_path=tmp_path)
+                result = _parse_receipt_rest(tmp_path)
                 if "error" in result:
                     output_lines.append(f"[WARN] {uf.name}: {result['error']}")
                 else:
