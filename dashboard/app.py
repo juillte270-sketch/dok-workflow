@@ -417,8 +417,11 @@ with st.sidebar:
 
     date_str = st.session_state.target_date.strftime("%Y-%m-%d")
 
-    # Progress summary
-    completed = count_completed(date_str)
+    # Progress summary (safe — Drive errors should not crash sidebar)
+    try:
+        completed = count_completed(date_str)
+    except Exception:
+        completed = 0
     total = len(STAGES)
     pct = completed / total if total else 0
     st.markdown(
@@ -433,7 +436,10 @@ with st.sidebar:
     st.divider()
 
     # Page → stages mapping (for status display)
-    progress = load_progress(date_str)
+    try:
+        progress = load_progress(date_str)
+    except Exception:
+        progress = {}
     _page_stage_map = {}
     for s in STAGES:
         pg = s.get("page", "")

@@ -89,6 +89,15 @@ def _get_receipt_dir():
 
 
 def render(get_date_str, get_date_compact):
+    try:
+        _render_inner(get_date_str, get_date_compact)
+    except Exception as e:
+        import traceback
+        st.error(f"대시보드 렌더링 오류: {e}")
+        st.code(traceback.format_exc(), language="text")
+
+
+def _render_inner(get_date_str, get_date_compact):
     date_str = get_date_str()
     date_compact = get_date_compact()
 
@@ -96,7 +105,10 @@ def render(get_date_str, get_date_compact):
     progress = load_progress(date_str)
 
     # --- Master file quick selector ---
-    _render_master_selector(settings)
+    try:
+        _render_master_selector(settings)
+    except Exception:
+        pass  # non-critical
 
     # === Header: title + metrics (pure HTML, no columns) ===
     completed = count_completed(date_str)
