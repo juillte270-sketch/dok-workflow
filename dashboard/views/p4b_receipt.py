@@ -569,16 +569,27 @@ def _render_drive_tab(master_path, date_str, from_drive):
         st.info(f"최근 {since_hours}시간 이내 이미지가 없습니다.")
         return
 
+    # 공급처 식별
+    supplier_map = st.session_state.get("drive_receipt_supplier_map", {})
+
+    col_table, col_identify = st.columns([3, 1])
+    with col_identify:
+        if st.button("공급처 확인", key="btn_drive_identify_suppliers",
+                      help="Gemini로 각 이미지의 공급처를 식별합니다"):
+            _identify_drive_suppliers(images)
+
     # 이미지 목록 테이블
     table_data = []
     for img in images:
         table_data.append({
             "파일명": img["name"],
+            "공급처": supplier_map.get(img["name"], "-"),
             "시간": img["mtime"].strftime("%H:%M"),
             "크기": f"{img['size_kb']:.0f}KB",
         })
     df = pd.DataFrame(table_data)
-    st.dataframe(df, use_container_width=True, height=min(len(images) * 35 + 38, 300))
+    with col_table:
+        st.dataframe(df, use_container_width=True, height=min(len(images) * 35 + 38, 300))
 
     # 옵션 + 실행 버튼
     col_btn, col_opt = st.columns([2, 1])
@@ -594,6 +605,47 @@ def _render_drive_tab(master_path, date_str, from_drive):
             disabled=not images,
         ):
             _process_drive_receipts(images, master_path, date_str, dry_run, from_drive)
+
+
+def _identify_drive_suppliers(images):
+    """Drive 영수증 이미지를 다운로드하여 Gemini로 공급처 식별."""
+    from dashboard.drive_service import download_file_by_id
+
+    exec_dir = os.path.join(PROJECT_ROOT, 'execution')
+    if exec_dir not in sys.path:
+        sys.path.insert(0, exec_dir)
+
+    try:
+        import streamlit as _st
+        gemini_key = _st.secrets.get("GEMINI_API_KEY", "")
+        if gemini_key and not os.environ.get("GEMINI_API_KEY"):
+            os.environ["GEMINI_API_KEY"] = gemini_key
+    except Exception:
+        pass
+
+    from parse_receipt import identify_supplier_from_image
+
+    supplier_map = {}
+    progress = st.progress(0, text="공급처 식별 중...")
+
+    for i, img in enumerate(images):
+        progress.progress((i + 1) / len(images), text=f"공급처 식별 중... ({i+1}/{len(images)})")
+        tmp_path = download_file_by_id(img["id"])
+        try:
+            supplier = identify_supplier_from_image(tmp_path)
+            supplier_map[img["name"]] = supplier
+        except Exception as e:
+            supplier_map[img["name"]] = f"오류({e})"
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    progress.empty()
+    st.session_state["drive_receipt_supplier_map"] = supplier_map
+    st.toast(f"공급처 식별 완료 ({len(images)}개)")
+    st.rerun()
 
 
 def _render_upload_tab(master_path, date_str, from_drive):
