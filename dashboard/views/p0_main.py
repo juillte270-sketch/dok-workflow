@@ -127,7 +127,7 @@ def _render_inner(get_date_str, get_date_compact):
     except Exception:
         pass
 
-    # === Stage list — left: info, right: button ===
+    # === Stage list — full-width button per stage ===
     for s in STAGES:
         sid = s["id"]
         info = progress.get(sid, {})
@@ -135,44 +135,26 @@ def _render_inner(get_date_str, get_date_compact):
         ts = info.get("timestamp", "")
         ts_short = ts[11:16] if len(ts) > 16 else ""
 
-        # Status info for the left label
-        if status == "completed":
-            status_html = f'<span style="color:#4ADE80;font-size:0.75rem">✓ 완료 {ts_short}</span>'
-            btn_label = "완료"
-            btn_disabled = True
-        elif status == "failed":
-            status_html = '<span style="color:#F87171;font-size:0.75rem">✗ 실패</span>'
-            btn_label = "재시도"
-            btn_disabled = False
-        elif status == "running":
-            status_html = '<span style="color:#FBBF24;font-size:0.75rem">⏳ 실행중</span>'
-            btn_label = "실행중"
-            btn_disabled = True
-        elif s.get("dev"):
-            status_html = '<span style="color:#64748B;font-size:0.75rem">개발중</span>'
-            btn_label = "개발중"
-            btn_disabled = True
-        else:
-            status_html = ''
-            btn_label = "실행"
-            btn_disabled = False
+        name_part = f"{s['icon']}. {s['name']}"
 
-        # Left: stage info (HTML) | Right: button
-        col_info, col_btn = st.columns([5, 1])
-        with col_info:
-            st.markdown(
-                f'<div style="display:flex;align-items:center;gap:8px;padding:4px 0;min-height:36px">'
-                f'<span style="display:inline-flex;align-items:center;justify-content:center;'
-                f'width:22px;height:22px;border-radius:50%;background:#334155;'
-                f'color:#CBD5E1;font-size:0.65rem;font-weight:600;flex-shrink:0">{s["icon"]}</span>'
-                f'<span style="font-size:0.88rem;font-weight:500">{s["name"]}</span>'
-                f'{status_html}'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with col_btn:
-            if st.button(btn_label, key=f"run_{sid}", disabled=btn_disabled, use_container_width=True):
-                _run_single_stage(sid, date_str, settings)
+        if status == "completed":
+            label = f"{name_part}  —  ✓ 완료 {ts_short}"
+            disabled = True
+        elif status == "failed":
+            label = f"{name_part}  —  재시도(실패)"
+            disabled = False
+        elif status == "running":
+            label = f"{name_part}  —  실행중..."
+            disabled = True
+        elif s.get("dev"):
+            label = f"{name_part}  —  (개발중)"
+            disabled = True
+        else:
+            label = f"{name_part}  —  실행"
+            disabled = False
+
+        if st.button(label, key=f"run_{sid}", disabled=disabled, use_container_width=True):
+            _run_single_stage(sid, date_str, settings)
 
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):

@@ -252,9 +252,10 @@ st.markdown("""
 
     /* === Mobile Responsive — 768px 이하 === */
     @media (max-width: 768px) {
-        /* Streamlit 헤더 숨김 (Deploy 버튼 등) — 모바일 공간 확보 */
+        /* Streamlit 헤더 높이 축소 (사이드바 토글 유지) */
         header[data-testid="stHeader"] {
-            display: none !important;
+            height: 2.5rem !important;
+            min-height: 2.5rem !important;
         }
 
         /* 컨테이너 패딩 최소화 */
