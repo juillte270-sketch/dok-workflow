@@ -308,13 +308,39 @@ def mark_stage(stage_id: str, status: str = "completed", extra: dict = None, dat
     _append_history(stage_id, status, extra, date_str)
 
 
+def _recover_stale_running(progress: dict, date_str: str = None) -> bool:
+    """Auto-recover stages stuck in 'running' for >15 minutes."""
+    STALE_SECONDS = 900  # 15 minutes
+    now = datetime.datetime.now()
+    changed = False
+    for stage_id, entry in progress.items():
+        if not isinstance(entry, dict) or entry.get("status") != "running":
+            continue
+        ts_str = entry.get("timestamp", "")
+        try:
+            ts = datetime.datetime.fromisoformat(ts_str)
+            if (now - ts).total_seconds() > STALE_SECONDS:
+                entry["status"] = "failed"
+                entry["error"] = f"실행 시간 초과 (15분+, 자동 복구)"
+                changed = True
+        except (ValueError, TypeError):
+            entry["status"] = "failed"
+            entry["error"] = "타임스탬프 오류 (자동 복구)"
+            changed = True
+    if changed:
+        save_progress(progress, date_str)
+    return changed
+
+
 def get_stage_status(stage_id: str, date_str: str = None) -> str:
     prog = load_progress(date_str)
+    _recover_stale_running(prog, date_str)
     return prog.get(stage_id, {}).get("status", "pending")
 
 
 def count_completed(date_str: str = None) -> int:
     prog = load_progress(date_str)
+    _recover_stale_running(prog, date_str)
     return sum(1 for v in prog.values() if isinstance(v, dict) and v.get("status") == "completed")
 
 

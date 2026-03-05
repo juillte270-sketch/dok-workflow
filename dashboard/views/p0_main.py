@@ -104,6 +104,10 @@ def _render_inner(get_date_str, get_date_compact):
     settings = load_settings()
     progress = load_progress(date_str)
 
+    # Auto-recover stale "running" stages (>15 min)
+    from dashboard.utils import _recover_stale_running
+    _recover_stale_running(progress, date_str)
+
     # === Handle stage execution triggered by HTML link click ===
     params = st.query_params
     run_target = params.get("run")
@@ -293,45 +297,51 @@ def _run_single_stage(stage_id, date_str, settings):
     }.get(stage_id, "default")
     timeout = settings.get("timeouts", {}).get(timeout_key, 300)
 
-    with st.spinner(f"{stage['name']} 실행 중..."):
-        success, stdout, stderr, elapsed = run_script_safe(
-            script, args, timeout=timeout, backup=needs_backup,
-        )
+    try:
+        with st.spinner(f"{stage['name']} 실행 중..."):
+            success, stdout, stderr, elapsed = run_script_safe(
+                script, args, timeout=timeout, backup=needs_backup,
+            )
 
-    if success:
-        # Cloud mode: upload modified master back to Drive
-        if from_drive and stage_id in modifying_stages:
-            try:
-                sync_master_back(master_path)
-            except Exception as e:
-                st.warning(f"Drive 업로드 실패: {e}")
+        if success:
+            # Cloud mode: upload modified master back to Drive
+            if from_drive and stage_id in modifying_stages:
+                try:
+                    sync_master_back(master_path)
+                except Exception as e:
+                    st.warning(f"Drive 업로드 실패: {e}")
 
-        mark_stage(stage_id, "completed", {"elapsed": elapsed}, date_str=date_str)
-        st.toast(f"✅ {stage['name']} 완료 ({format_elapsed(elapsed)})")
+            mark_stage(stage_id, "completed", {"elapsed": elapsed}, date_str=date_str)
+            st.toast(f"✅ {stage['name']} 완료 ({format_elapsed(elapsed)})")
 
-        # stage4_helo 완료 후 → 다음날짜 재고현황 자동 생성
-        if stage_id == "stage4_helo":
-            inv_args = _get_stage_args("stage4_inventory", date_str, settings)
-            with st.spinner("다음날짜 재고현황 생성 중..."):
-                inv_ok, inv_out, inv_err, inv_elapsed = run_script_safe(
-                    "manage_inventory_date.py", inv_args, timeout=300, backup=True,
-                )
-            if inv_ok:
-                st.toast(f"✅ 재고현황 생성 완료 ({format_elapsed(inv_elapsed)})")
-                if inv_out:
-                    stdout = (stdout or "") + "\n\n=== 재고현황 생성 ===\n" + inv_out
-            else:
-                st.warning("⚠️ 재고현황 생성 실패 (HELO 입력은 완료)")
-                if inv_err:
-                    st.code(inv_err[-1000:], language="text")
-    else:
-        mark_stage(stage_id, "failed", {"error": stderr[-1000:], "elapsed": elapsed}, date_str=date_str)
-        st.error(f"❌ {stage['name']} 실패")
-        st.code(stderr[-2000:], language="text")
+            # stage4_helo 완료 후 → 다음날짜 재고현황 자동 생성
+            if stage_id == "stage4_helo":
+                inv_args = _get_stage_args("stage4_inventory", date_str, settings)
+                with st.spinner("다음날짜 재고현황 생성 중..."):
+                    inv_ok, inv_out, inv_err, inv_elapsed = run_script_safe(
+                        "manage_inventory_date.py", inv_args, timeout=300, backup=True,
+                    )
+                if inv_ok:
+                    st.toast(f"✅ 재고현황 생성 완료 ({format_elapsed(inv_elapsed)})")
+                    if inv_out:
+                        stdout = (stdout or "") + "\n\n=== 재고현황 생성 ===\n" + inv_out
+                else:
+                    st.warning("⚠️ 재고현황 생성 실패 (HELO 입력은 완료)")
+                    if inv_err:
+                        st.code(inv_err[-1000:], language="text")
+        else:
+            mark_stage(stage_id, "failed", {"error": stderr[-1000:], "elapsed": elapsed}, date_str=date_str)
+            st.error(f"❌ {stage['name']} 실패")
+            st.code(stderr[-2000:], language="text")
 
-    if stdout:
-        with st.expander("실행 결과", expanded=success):
-            st.code(stdout[-3000:], language="text")
+        if stdout:
+            with st.expander("실행 결과", expanded=success):
+                st.code(stdout[-3000:], language="text")
+
+    except Exception as e:
+        # Ensure "running" never gets stuck — always mark failed on crash
+        mark_stage(stage_id, "failed", {"error": str(e)[:500]}, date_str=date_str)
+        st.error(f"❌ {stage['name']} 예외 발생: {e}")
 
     st.rerun()
 
