@@ -104,98 +104,64 @@ def _render_inner(get_date_str, get_date_compact):
     settings = load_settings()
     progress = load_progress(date_str)
 
-    # --- Master file quick selector ---
-    try:
-        _render_master_selector(settings)
-    except Exception:
-        pass  # non-critical
-
-    # === Header: title + metrics (pure HTML, no columns) ===
+    # === Header: compact metrics (pure HTML, one line) ===
     completed = count_completed(date_str)
     total = len(STAGES)
     failed = sum(1 for v in progress.values() if isinstance(v, dict) and v.get("status") == "failed")
     waiting = total - completed - failed
 
     st.markdown(
-        f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'
-        f'<b style="font-size:1.05rem;flex:1;min-width:100px">업무 현황</b>'
-        f'<span style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:2px 8px;font-size:0.75rem">'
-        f'완료 <b style="color:#4ADE80">{completed}/{total}</b></span>'
-        f'<span style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:2px 8px;font-size:0.75rem">'
-        f'실패 <b style="color:#F87171">{failed}</b></span>'
-        f'<span style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:2px 8px;font-size:0.75rem">'
-        f'대기 <b style="color:#E2E8F0">{waiting}</b></span>'
-        f'</div>',
+        f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">'
+        f'<b style="font-size:1rem;flex:1">업무 현황</b>'
+        f'<span style="font-size:0.75rem">'
+        f'<b style="color:#4ADE80">{completed}</b>/<span style="color:#64748B">{total}</span>'
+        f'&nbsp; 실패 <b style="color:#F87171">{failed}</b>'
+        f'&nbsp; 대기 <b style="color:#94A3B8">{waiting}</b>'
+        f'</span></div>',
         unsafe_allow_html=True,
     )
 
-    # === Stage list — single HTML block, no columns ===
-    rows_html = ""
+    # === Stage list — one button per stage (full-width, no columns) ===
     for s in STAGES:
         sid = s["id"]
         info = progress.get(sid, {})
         status = info.get("status", "pending")
-        sub = s.get("sub", "")
-        sub_html = f' <span style="color:#64748B;font-size:0.7rem">{sub}</span>' if sub else ""
-
-        # Status dot + text
-        dot_cls = {"completed": "dot-ok", "failed": "dot-fail", "running": "dot-run"}.get(status, "dot-wait")
-        status_text = {"completed": "완료", "failed": "실패", "running": "실행중"}.get(status, "대기")
         ts = info.get("timestamp", "")
-        ts_short = ts[11:16] if len(ts) > 16 and status == "completed" else ""
+        ts_short = ts[11:16] if len(ts) > 16 else ""
 
-        # Row background
-        bg = ""
+        # Button label: "번호. 이름 — 상태"
         if status == "completed":
-            bg = "background:rgba(74,222,128,0.05);"
+            label = f"{s['icon']}. {s['name']}  ✓ 완료 {ts_short}"
+            disabled = True
         elif status == "failed":
-            bg = "background:rgba(248,113,113,0.06);"
+            label = f"{s['icon']}. {s['name']}  ✗ 재시도(실패)"
+            disabled = False
         elif status == "running":
-            bg = "background:rgba(251,191,36,0.06);"
+            label = f"{s['icon']}. {s['name']}  ⏳ 실행중..."
+            disabled = True
+        elif s.get("dev"):
+            label = f"{s['icon']}. {s['name']}  (개발중)"
+            disabled = True
+        else:
+            label = f"{s['icon']}. {s['name']}  ▶ 실행(대기)"
+            disabled = False
 
-        rows_html += (
-            f'<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;'
-            f'border-bottom:1px solid #1E293B;{bg}">'
-            f'<span style="display:inline-flex;align-items:center;justify-content:center;'
-            f'width:20px;height:20px;border-radius:50%;background:#334155;'
-            f'color:#CBD5E1;font-size:0.65rem;font-weight:600;flex-shrink:0">{s["icon"]}</span>'
-            f'<span style="flex:1;font-size:0.85rem;line-height:1.3"><b>{s["name"]}</b>{sub_html}</span>'
-            f'<span style="display:flex;align-items:center;gap:4px;flex-shrink:0;font-size:0.75rem;color:#94A3B8">'
-            f'<span style="width:7px;height:7px;border-radius:50%;display:inline-block" class="{dot_cls}"></span>'
-            f'{status_text}'
-            f'{"&nbsp;" + ts_short if ts_short else ""}'
-            f'</span>'
-            f'</div>'
-        )
+        if st.button(label, key=f"run_{sid}", disabled=disabled, use_container_width=True):
+            _run_single_stage(sid, date_str, settings)
 
-    st.markdown(
-        f'<div style="border:1px solid #334155;border-radius:10px;overflow:hidden;margin:4px 0">'
-        f'{rows_html}</div>',
-        unsafe_allow_html=True,
-    )
-
-    # === Action row: selectbox + run button ===
-    runnable = [(s["id"], f'{s["icon"]}. {s["name"]}') for s in STAGES if not s.get("dev")]
-    selected_idx = st.selectbox(
-        "실행할 스테이지",
-        range(len(runnable)),
-        format_func=lambda i: runnable[i][1],
-        key="stage_select",
-        label_visibility="collapsed",
-    )
-
-    if st.button("▶ 선택 스테이지 실행", type="primary", key="btn_run_selected"):
-        _run_single_stage(runnable[selected_idx][0], date_str, settings)
-
-    # Batch + utility buttons
-    if st.button("▶▶ 일괄 실행 (1→5)", key="btn_batch_morning"):
-        _run_batch_morning(date_str, settings)
-
-    with st.expander("기타 작업", expanded=False):
+    # === Batch + utility (expander) ===
+    with st.expander("일괄 실행 & 기타", expanded=False):
+        if st.button("▶▶ 일괄 실행 (1→5)", type="primary", key="btn_batch_morning"):
+            _run_batch_morning(date_str, settings)
         if st.button("카톡 요약 전송", key="btn_kakao_summary"):
             _send_kakao_summary(date_str, progress)
         if st.button("진행상황 초기화", key="btn_reset_progress"):
             _reset_progress(date_str)
+        # Master file selector
+        try:
+            _render_master_selector(settings)
+        except Exception:
+            pass
 
     # Error details (if any failed stages)
     failed_stages = [(s, progress.get(s["id"], {})) for s in STAGES
