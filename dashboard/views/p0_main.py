@@ -127,7 +127,8 @@ def _render_inner(get_date_str, get_date_compact):
     except Exception:
         pass
 
-    # === Stage list — left: info (truncatable), right: button (fixed width) ===
+    # === Stage list — flat buttons styled like table rows ===
+    # 스크린샷의 HTML 테이블과 동일한 레이아웃, "대기" → "실행" 버튼
     for s in STAGES:
         sid = s["id"]
         info = progress.get(sid, {})
@@ -135,34 +136,27 @@ def _render_inner(get_date_str, get_date_compact):
         ts = info.get("timestamp", "")
         ts_short = ts[11:16] if len(ts) > 16 else ""
 
+        # 왼쪽: 번호 + 이름, 오른쪽: 상태/액션
+        name = s["name"]
         if status == "completed":
-            status_txt = f'<span style="color:#4ADE80">&#10003; {ts_short}</span>'
-            btn_label, btn_disabled = "완료", True
+            right = f"완료 {ts_short}"
+            disabled = True
         elif status == "failed":
-            status_txt = '<span style="color:#F87171">&#10007;</span>'
-            btn_label, btn_disabled = "재시도", False
+            right = "재시도"
+            disabled = False
         elif status == "running":
-            status_txt = '<span style="color:#FBBF24">&#9203;</span>'
-            btn_label, btn_disabled = "...", True
+            right = "실행중..."
+            disabled = True
         elif s.get("dev"):
-            status_txt = '<span style="color:#64748B">dev</span>'
-            btn_label, btn_disabled = "-", True
+            right = "개발중"
+            disabled = True
         else:
-            status_txt = ""
-            btn_label, btn_disabled = "실행", False
+            right = "실행"
+            disabled = False
 
-        col_info, col_btn = st.columns([4, 1])
-        with col_info:
-            st.markdown(
-                f'<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
-                f'font-size:0.85rem;line-height:32px">'
-                f'<b style="color:#94A3B8">{s["icon"]}.</b> {s["name"]} {status_txt}'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with col_btn:
-            if st.button(btn_label, key=f"run_{sid}", disabled=btn_disabled, use_container_width=True):
-                _run_single_stage(sid, date_str, settings)
+        label = f"{s['icon']}. {name}  ·  {right}"
+        if st.button(label, key=f"run_{sid}", disabled=disabled, use_container_width=True):
+            _run_single_stage(sid, date_str, settings)
 
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):

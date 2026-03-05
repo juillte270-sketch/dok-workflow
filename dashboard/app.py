@@ -302,13 +302,35 @@ st.markdown("""
             min-width: 0 !important;
         }
 
-        /* 버튼 — 콤팩트 + 터치 가능 */
+        /* 버튼 — 테이블 행 스타일 (flat, 좌측 정렬) */
         .stButton > button {
-            padding: 0.2rem 0.4rem !important;
-            font-size: 0.8rem !important;
-            min-height: 32px !important;
-            white-space: nowrap !important;
+            text-align: left !important;
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid #1E293B !important;
+            border-radius: 0 !important;
+            padding: 8px 10px !important;
+            font-size: 0.85rem !important;
+            min-height: 0 !important;
+            height: auto !important;
             margin: 0 !important;
+            white-space: nowrap !important;
+        }
+        .stButton > button:hover {
+            background: rgba(129, 140, 248, 0.08) !important;
+            border-bottom: 1px solid #334155 !important;
+        }
+        .stButton > button:disabled {
+            opacity: 0.85 !important;
+        }
+        /* primary 버튼은 기존 스타일 유지 */
+        .stButton > button[kind="primary"] {
+            text-align: center !important;
+            background: linear-gradient(135deg, #818CF8, #6366F1) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 0.5rem 1rem !important;
+            min-height: 36px !important;
         }
 
         /* 탭 — 콤팩트 */
