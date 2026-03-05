@@ -252,17 +252,23 @@ st.markdown("""
 
     /* === Mobile Responsive — 768px 이하 === */
     @media (max-width: 768px) {
-        /* Streamlit 헤더 높이 축소 (사이드바 토글 유지) */
+        /* Streamlit 헤더/툴바 최소화 (사이드바 토글만 유지) */
         header[data-testid="stHeader"] {
-            height: 2.5rem !important;
-            min-height: 2.5rem !important;
+            height: 2rem !important;
+            min-height: 2rem !important;
+        }
+        [data-testid="stToolbar"] {
+            display: none !important;
+        }
+        [data-testid="stDecoration"] {
+            display: none !important;
         }
 
         /* 컨테이너 패딩 최소화 */
         .block-container {
-            padding-top: 0.5rem !important;
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
+            padding-top: 0.25rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
             padding-bottom: 1rem !important;
         }
 
