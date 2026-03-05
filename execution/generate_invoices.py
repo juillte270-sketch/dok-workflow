@@ -76,9 +76,10 @@ def parse_processed_orders():
 
     current_store = None
 
-    # Regex to handle items like "청경채 4박스" or "청경채 4.5박스"
-    # Same regex as update_order_sheet.py
+    # Regex to handle items like "청경채 4박스" or "청경채 4.5박스" or "스테비아토마토1박스" (공백 없는 경우 포함)
     item_pattern = re.compile(r'^(.+?)\s+(\d+(?:\.\d+)?)([a-zA-Z가-힣]+).*$')
+    # Fallback: 공백 없이 품명+수량+단위 붙어있는 경우 (예: 스테비아토마토1박스)
+    item_pattern_nospace = re.compile(r'^(.+?)(\d+(?:\.\d+)?)([a-zA-Z가-힣]+).*$')
 
     supplier_names = _load_supplier_names()
 
@@ -106,6 +107,8 @@ def parse_processed_orders():
                 continue
                 
             match = item_pattern.match(line)
+            if not match:
+                match = item_pattern_nospace.match(line)
             if match:
                 item_name = match.group(1).strip()
                 qty = float(match.group(2))

@@ -22,7 +22,7 @@ st.set_page_config(
     page_title="DoK Workflow",
     page_icon="📋",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- Design System: Slate Indigo Palette ---
@@ -248,6 +248,115 @@ st.markdown("""
     /* === caption 크기 키움 === */
     .stCaption, [data-testid="stCaptionContainer"] {
         font-size: 0.82rem !important;
+    }
+
+    /* === Mobile Responsive — 768px 이하 === */
+    @media (max-width: 768px) {
+        /* 컨테이너 패딩 축소 */
+        .block-container {
+            padding-top: 1rem !important;
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        /* 사이드바 최소 너비 해제 */
+        section[data-testid="stSidebar"] {
+            min-width: unset !important;
+        }
+
+        /* 헤더 크기 축소 */
+        h1 { font-size: 1.25rem !important; }
+        h2 { font-size: 1.05rem !important; }
+        h3 { font-size: 0.95rem !important; }
+
+        /* 메트릭 카드 — 콤팩트 */
+        [data-testid="stMetric"] {
+            padding: 10px 12px !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.3rem !important;
+        }
+        [data-testid="stMetricLabel"] {
+            font-size: 0.78rem !important;
+        }
+
+        /* 버튼 — 터치 친화적 (최소 44px) */
+        .stButton > button {
+            padding: 0.6rem 0.75rem !important;
+            font-size: 0.85rem !important;
+            min-height: 44px !important;
+        }
+
+        /* 탭 — 콤팩트 */
+        .stTabs [data-baseweb="tab"] {
+            padding: 8px 12px !important;
+            font-size: 0.82rem !important;
+        }
+
+        /* 카드 — 패딩 축소 */
+        .tok-card {
+            padding: 14px 16px !important;
+            border-radius: 10px !important;
+        }
+
+        /* 스텝 번호 — 약간 축소 */
+        .step-num {
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 0.7rem !important;
+        }
+
+        /* 코드/로그 영역 — 가로 스크롤 허용 */
+        pre, code, .log-area {
+            font-size: 0.72rem !important;
+            word-break: break-all !important;
+        }
+
+        /* 데이터프레임 가로 스크롤 */
+        [data-testid="stDataFrame"] {
+            overflow-x: auto !important;
+        }
+
+        /* 사이드바 라디오 — 터치 영역 확대 */
+        section[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] > label {
+            padding: 0.55rem 0.8rem !important;
+            font-size: 0.88rem !important;
+        }
+
+        /* 캡션 — 가독성 확보 */
+        .stCaption, [data-testid="stCaptionContainer"] {
+            font-size: 0.78rem !important;
+        }
+
+        /* 배지 — 약간 축소 */
+        .badge { font-size: 0.75rem !important; }
+
+        /* 텍스트 영역 / 입력 — 풀 너비 */
+        .stTextArea textarea,
+        .stSelectbox,
+        .stDateInput {
+            font-size: 0.85rem !important;
+        }
+    }
+
+    /* === 초소형 모바일 — 480px 이하 === */
+    @media (max-width: 480px) {
+        .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+
+        h1 { font-size: 1.1rem !important; }
+
+        [data-testid="stMetricValue"] {
+            font-size: 1.1rem !important;
+        }
+
+        /* 사이드바 내 타이틀 축소 */
+        section[data-testid="stSidebar"] h3 {
+            font-size: 0.9rem !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)

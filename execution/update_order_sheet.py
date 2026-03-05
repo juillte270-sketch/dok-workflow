@@ -45,6 +45,8 @@ def parse_processed_orders(target_date_str):
     import re
     # Pattern for items: "Item Name QtyUnit" (e.g., "청경채 4박스")
     item_pattern = re.compile(r'^(.+?)\s+(\d+(?:\.\d+)?)([a-zA-Z가-힣]+).*$')
+    # Fallback: 공백 없이 붙어있는 경우 (예: 스테비아토마토1박스)
+    item_pattern_nospace = re.compile(r'^(.+?)(\d+(?:\.\d+)?)([a-zA-Z가-힣]+).*$')
 
     # Supplier names loaded from canonical source (mappings.json)
     supplier_names = _load_supplier_names()
@@ -74,11 +76,13 @@ def parse_processed_orders(target_date_str):
                 continue
                 
             match = item_pattern.match(line)
+            if not match:
+                match = item_pattern_nospace.match(line)
             if match:
                 item_name = match.group(1).strip()
                 qty = float(match.group(2))
                 unit = match.group(3).strip()
-                
+
                 orders.append({
                     "매장명": current_store,
                     "품목": item_name,

@@ -172,10 +172,11 @@ ITEM_OVERRIDES = {
         'target_unit_kg': 8.0,
         'price_factor': 1.0,
     },
-    # 귤: 감귤 5kg상자
+    # 귤: 감귤 5kg 상 등급
     '귤': {
         'search': '감귤',
         'filter_item_exact': '감귤',
+        'target_grade': '상',
         'target_unit_kg': 5.0,
         'price_factor': 1.0,
     },

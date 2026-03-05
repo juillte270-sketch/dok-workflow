@@ -69,29 +69,28 @@ def render(get_date_str, get_date_compact):
         if status_sikbom == "completed":
             st.success("완료됨")
 
-        if cloud_mode:
-            st.caption("Cloud 미지원 (Selenium 브라우저 필요) — 로컬 대시보드에서 실행해주세요")
-            st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=True)
-        else:
-            st.caption("Selenium 브라우저 자동 조회 (2~5분)")
-            if st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=not master_ok):
-                with st.spinner("식봄 가격 조회 중... (브라우저 자동화)"):
-                    success, stdout, stderr, elapsed = run_script(
-                        "fill_sikbom_targeted.py",
-                        ["--master", master_path, "--date", date_str],
-                        timeout=get_timeout("sikbom"),
-                    )
-                if success:
-                    mark_stage("stage3_sikbom", "completed", {"elapsed": elapsed}, date_str=date_str)
-                    st.toast(f"✅ 식봄 조회 완료 ({format_elapsed(elapsed)})")
-                    if stdout:
-                        st.code(stdout[-2000:], language="text")
-                else:
-                    mark_stage("stage3_sikbom", "failed", {"error": stderr[-500:]}, date_str=date_str)
-                    st.error("실패")
-                    st.code(stderr[-2000:], language="text")
-                    if st.button("재시도", key="btn_sikbom_retry"):
-                        st.rerun()
+        st.caption("Playwright 브라우저 자동 조회 (2~5분)")
+        if st.button("식봄 가격 조회", type="primary", key="btn_sikbom", disabled=not master_ok):
+            with st.spinner("식봄 가격 조회 중... (브라우저 자동화)"):
+                success, stdout, stderr, elapsed = run_script(
+                    "fill_sikbom_targeted.py",
+                    ["--master", master_path, "--date", date_str],
+                    timeout=get_timeout("sikbom"),
+                )
+            if success:
+                if from_drive:
+                    from dashboard.utils import sync_master_back
+                    sync_master_back(master_path)
+                mark_stage("stage3_sikbom", "completed", {"elapsed": elapsed}, date_str=date_str)
+                st.toast(f"✅ 식봄 조회 완료 ({format_elapsed(elapsed)})")
+                if stdout:
+                    st.code(stdout[-2000:], language="text")
+            else:
+                mark_stage("stage3_sikbom", "failed", {"error": stderr[-500:]}, date_str=date_str)
+                st.error("실패")
+                st.code(stderr[-2000:], language="text")
+                if st.button("재시도", key="btn_sikbom_retry"):
+                    st.rerun()
 
     # === 5: Auction prices ===
     with col3:

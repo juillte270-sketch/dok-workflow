@@ -14,11 +14,6 @@ def render(get_date_str, get_date_compact):
 
     st.header("7. 동원발주 스크래핑")
 
-    # Cloud guard — Selenium 필수
-    if is_cloud():
-        st.warning("Cloud 미지원 (Selenium 브라우저 필요) — 로컬 대시보드에서 실행해주세요")
-        return
-
     settings = load_settings()
     master_ok = check_master_before_run(settings)
     master_path, from_drive = resolve_master_path(settings)

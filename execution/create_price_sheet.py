@@ -67,22 +67,21 @@ def parse_order_list(order_text):
         if keyword in ["깐쪽파", "쪽파"]: keyword = "쪽파"
         if keyword == "취청오이": keyword = "오이"
         if keyword == "세척무": keyword = "무"
-        if keyword in ["간마늘", "깐마늘"]: keyword = "마늘"
+        # 마늘: 간마늘/깐마늘 구분 유지 (뭉치지 않음)
         if keyword == "세척당근": keyword = "당근"
         if keyword == "청경채": keyword = "청경채" # Explicit
         if keyword == "잎로메인": keyword = "로메인"  # 잎로메인 → 로메인(일반) 매칭용
 
         ordered_keywords.add(keyword)
-        
+
     # 추가 매핑 (Reverse Mapping for Matching: If user orders 'Onion', match 'Peeled Onion' too)
     base_keywords = list(ordered_keywords)
     for k in base_keywords:
-        if k == "양파": 
+        if k == "양파":
             ordered_keywords.add("깐양파"); ordered_keywords.add("피양파")
         if k == "대파":
             ordered_keywords.add("흙대파"); ordered_keywords.add("깐대파")
-        if k == "마늘":
-            ordered_keywords.add("간마늘"); ordered_keywords.add("깐마늘")
+        # 마늘: 깐마늘 주문 시 간마늘 자동 추가하지 않음 (별개 품목)
         if k == "오이":
             ordered_keywords.add("취청오이")
         if k == "토마토":
@@ -91,9 +90,7 @@ def parse_order_list(order_text):
              ordered_keywords.add("토마토")
         if k == "표고버섯":
              ordered_keywords.add("생표고"); ordered_keywords.add("표고")
-             
-    return ordered_keywords
-            
+
     return ordered_keywords
 
 def get_grade_priority(item_name):
@@ -291,7 +288,7 @@ def create_price_sheet(input_file, master_file, target_date, filter_only=False):
             if keyword in ["깐쪽파", "쪽파"]: keyword = "쪽파"
             if keyword == "취청오이": keyword = "오이"
             if keyword == "세척무": keyword = "무"
-            if keyword in ["간마늘", "깐마늘"]: keyword = "마늘"
+            # 마늘: 간마늘/깐마늘 구분 유지 (뭉치지 않음)
             if keyword == "세척당근": keyword = "당근"
             if keyword == "알베기배추": keyword = "알배기"
             if keyword == "알배기": keyword = "알배기"
@@ -402,9 +399,17 @@ def create_price_sheet(input_file, master_file, target_date, filter_only=False):
 
         
         if not matched_supp_key:
-            rows_to_delete.add(r)
+            # Fallback: 공급처 매칭 실패해도 ordered_keywords에 있으면 유지
+            # (템플릿 공급처 ≠ 발주 공급처인 경우: 치커리, 청양고추 등)
+            item_in_orders = False
+            for kw in ordered_keywords:
+                if kw in item_str or item_str in kw:
+                    item_in_orders = True
+                    break
+            if not item_in_orders:
+                rows_to_delete.add(r)
             continue
-            
+
         # 3. Item Match (Bidirectional)
         # Check if any keyword in supplier_map[matched_supp_key] is in item_str
         # OR if item_str contains any keyword

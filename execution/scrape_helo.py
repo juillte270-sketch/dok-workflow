@@ -4,7 +4,7 @@
 
 HELO는 nexacro (TOBESOFT) 프레임워크 — 표준 HTML이 아닌 JS 컴포넌트 기반.
 검증된 접근 순서:
-  1. Selenium 비-headless → HELO 페이지 로딩 (20초 대기)
+  1. Playwright headless → HELO 페이지 로딩 (20초 대기)
   2. nexacro JS API → loginDiv.loginFormDiv.{USER_ID, USER_PASSWORD, loginButton}
   3. 비밀번호 변경 팝업 → MouseEvent dispatch로 닫기
   4. 공급처전용 탭 (btn1396) → [일배] 발주정보 (gridrow_3) → 구매오더 (gridrow_7)
@@ -124,46 +124,42 @@ def load_helo_code_map():
     return code_map
 
 
-# ─── Selenium / HELO 접속 ───────────────────────────────────────
+# ─── Playwright / HELO 접속 ────────────────────────────────────
 
-def init_driver():
-    """Selenium WebDriver 초기화 (비-headless — nexacro 필수)"""
-    from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options
-
-    options = Options()
-    # nexacro는 headless에서 동작하지 않을 수 있음
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-gpu")
-
-    driver = webdriver.Chrome(options=options)
-    driver.implicitly_wait(10)
-    return driver
+def init_browser(headless=True):
+    """Playwright 브라우저 초기화"""
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from _browser import ensure_browser, create_browser
+    ensure_browser()
+    pw, browser, page = create_browser(headless=headless)
+    # dialog(alert) 자동 처리
+    page.on("dialog", lambda d: d.accept())
+    return pw, browser, page
 
 
-def wait_for_nexacro(driver, timeout=30):
+def wait_for_nexacro(page, timeout=30):
     """nexacro 프레임워크 + 로그인 폼 로딩 대기 (1초 간격 폴링)"""
     print("Waiting for nexacro to load...", flush=True)
     app_ready = False
     for i in range(timeout):
         try:
-            result = driver.execute_script(
+            result = page.evaluate(
                 """
-                try {
-                    var app = nexacro.getApplication();
-                    if (!app) return 'no_app';
-                    if (!app.mainframe) return 'no_mainframe';
-                    if (!app.mainframe.childframe) return 'no_childframe';
-                    var form = app.mainframe.childframe.form;
-                    if (!form) return 'no_form';
-                    // Check if login form OR main form is loaded
-                    if (form.loginDiv) return 'login_ready';
-                    if (form.workDiv) return 'main_ready';
-                    return 'form_loading';
-                } catch(e) {
-                    return 'not_loaded';
+                () => {
+                    try {
+                        var app = nexacro.getApplication();
+                        if (!app) return 'no_app';
+                        if (!app.mainframe) return 'no_mainframe';
+                        if (!app.mainframe.childframe) return 'no_childframe';
+                        var form = app.mainframe.childframe.form;
+                        if (!form) return 'no_form';
+                        if (form.loginDiv) return 'login_ready';
+                        if (form.workDiv) return 'main_ready';
+                        return 'form_loading';
+                    } catch(e) {
+                        return 'not_loaded';
+                    }
                 }
                 """
             )
@@ -180,28 +176,30 @@ def wait_for_nexacro(driver, timeout=30):
     return False
 
 
-def login_helo(driver):
+def login_helo(page):
     """HELO 로그인 (nexacro JS API — 검증된 경로)"""
     print(f"Navigating to {HELO_URL}...", flush=True)
-    driver.get(HELO_URL)
+    page.goto(HELO_URL, wait_until="networkidle")
 
-    if not wait_for_nexacro(driver, 60):
+    if not wait_for_nexacro(page, 60):
         return False
 
     # 로그인 폼 접근: loginDiv → loginFormDiv → USER_ID / USER_PASSWORD / loginButton
     print("Logging in via nexacro API...", flush=True)
-    result = driver.execute_script(
+    result = page.evaluate(
         f"""
-        try {{
-            var app = nexacro.getApplication();
-            var form = app.mainframe.childframe.form;
-            var loginForm = form.loginDiv.form.loginFormDiv.form;
-            loginForm.USER_ID.set_value("{HELO_ID}");
-            loginForm.USER_PASSWORD.set_value("{HELO_PW}");
-            loginForm.loginButton.click();
-            return "ok";
-        }} catch(e) {{
-            return "error: " + e.message;
+        () => {{
+            try {{
+                var app = nexacro.getApplication();
+                var form = app.mainframe.childframe.form;
+                var loginForm = form.loginDiv.form.loginFormDiv.form;
+                loginForm.USER_ID.set_value("{HELO_ID}");
+                loginForm.USER_PASSWORD.set_value("{HELO_PW}");
+                loginForm.loginButton.click();
+                return "ok";
+            }} catch(e) {{
+                return "error: " + e.message;
+            }}
         }}
     """
     )
@@ -213,19 +211,21 @@ def login_helo(driver):
     time.sleep(5)
 
     # 비밀번호 변경 팝업 닫기
-    dismiss_password_popup(driver)
+    dismiss_password_popup(page)
     time.sleep(3)
 
     # mainForm 로딩 확인
-    check = driver.execute_script(
+    check = page.evaluate(
         """
-        try {
-            var app = nexacro.getApplication();
-            var form = app.mainframe.childframe.form;
-            if (form.workDiv || form.mainDiv) return "main_loaded";
-            return "unknown_state";
-        } catch(e) {
-            return "error: " + e.message;
+        () => {
+            try {
+                var app = nexacro.getApplication();
+                var form = app.mainframe.childframe.form;
+                if (form.workDiv || form.mainDiv) return "main_loaded";
+                return "unknown_state";
+            } catch(e) {
+                return "error: " + e.message;
+            }
         }
     """
     )
@@ -233,7 +233,7 @@ def login_helo(driver):
     return "main_loaded" in check or "unknown" in check
 
 
-def dismiss_password_popup(driver):
+def dismiss_password_popup(page):
     """비밀번호 변경 유효기간 팝업 닫기.
 
     nexacro 팝업의 closeButton은 DOM .click()이 안 먹으므로
@@ -241,19 +241,21 @@ def dismiss_password_popup(driver):
     """
     print("  Checking for password popup...", flush=True)
     try:
-        result = driver.execute_script(
+        result = page.evaluate(
             """
-            var btn = document.querySelector("[id*=closeButton]");
-            if (btn) {
-                ['mousedown', 'mouseup', 'click'].forEach(function(evtType) {
-                    var evt = new MouseEvent(evtType, {
-                        bubbles: true, cancelable: true, view: window
+            () => {
+                var btn = document.querySelector("[id*=closeButton]");
+                if (btn) {
+                    ['mousedown', 'mouseup', 'click'].forEach(function(evtType) {
+                        var evt = new MouseEvent(evtType, {
+                            bubbles: true, cancelable: true, view: window
+                        });
+                        btn.dispatchEvent(evt);
                     });
-                    btn.dispatchEvent(evt);
-                });
-                return "dismissed";
+                    return "dismissed";
+                }
+                return "no_popup";
             }
-            return "no_popup";
         """
         )
         print(f"  Popup: {result}", flush=True)
@@ -261,28 +263,27 @@ def dismiss_password_popup(driver):
         print(f"  Popup check error: {e}", flush=True)
 
 
-def navigate_to_purchase_order(driver):
+def navigate_to_purchase_order(page):
     """구매오더(물동량조회) 메뉴로 이동.
 
     경로: 공급처전용 탭 → [일배] 발주정보 트리 → 구매오더(물동량조회)
-    nexacro 트리/그리드는 DOM event가 안 먹으므로 ActionChains 사용.
+    Playwright의 locator.click()은 물리 클릭과 동등.
     """
-    from selenium.webdriver.common.action_chains import ActionChains
-    from selenium.webdriver.common.by import By
-
     # Step 1: 공급처전용 탭 (btn1396)
     print("Step 1: Clicking 공급처전용 tab...", flush=True)
     try:
-        result = driver.execute_script(
+        result = page.evaluate(
             """
-            var btn = document.querySelector("[id*=btn1396]");
-            if (btn) {
-                ['mousedown', 'mouseup', 'click'].forEach(function(t) {
-                    btn.dispatchEvent(new MouseEvent(t, {bubbles:true, cancelable:true, view:window}));
-                });
-                return "clicked";
+            () => {
+                var btn = document.querySelector("[id*=btn1396]");
+                if (btn) {
+                    ['mousedown', 'mouseup', 'click'].forEach(function(t) {
+                        btn.dispatchEvent(new MouseEvent(t, {bubbles:true, cancelable:true, view:window}));
+                    });
+                    return "clicked";
+                }
+                return "not_found";
             }
-            return "not_found";
         """
         )
         print(f"  btn1396: {result}", flush=True)
@@ -293,21 +294,16 @@ def navigate_to_purchase_order(driver):
     time.sleep(3)
 
     # Step 2: [일배] 발주정보 트리 확장 (gridrow_3)
-    # nexacro 트리 노드는 ActionChains 물리 클릭이 필요
     print("Step 2: Expanding [일배] 발주정보...", flush=True)
     try:
-        row_el = driver.find_element(By.CSS_SELECTOR, "[id*=gridrow_3]")
-        ActionChains(driver).move_to_element(row_el).click().perform()
+        page.locator("[id*=gridrow_3]").first.click()
         print("  Expanded gridrow_3", flush=True)
     except Exception as e:
         print(f"  Tree expand error: {e}", flush=True)
         # Fallback: try other gridrow indices
         for idx in [2, 4, 5]:
             try:
-                row_el = driver.find_element(
-                    By.CSS_SELECTOR, f"[id*=gridrow_{idx}]"
-                )
-                ActionChains(driver).move_to_element(row_el).click().perform()
+                page.locator(f"[id*=gridrow_{idx}]").first.click()
                 print(f"  Fallback: expanded gridrow_{idx}", flush=True)
                 break
             except Exception:
@@ -318,18 +314,14 @@ def navigate_to_purchase_order(driver):
     # Step 3: 구매오더(물동량조회) 클릭 (gridrow_7)
     print("Step 3: Clicking 구매오더(물동량조회)...", flush=True)
     try:
-        row_el = driver.find_element(By.CSS_SELECTOR, "[id*=gridrow_7]")
-        ActionChains(driver).move_to_element(row_el).click().perform()
+        page.locator("[id*=gridrow_7]").first.click()
         print("  Clicked gridrow_7", flush=True)
     except Exception as e:
         print(f"  Menu click error: {e}", flush=True)
         # Fallback: try adjacent indices
         for idx in [6, 8, 9]:
             try:
-                row_el = driver.find_element(
-                    By.CSS_SELECTOR, f"[id*=gridrow_{idx}]"
-                )
-                ActionChains(driver).move_to_element(row_el).click().perform()
+                page.locator(f"[id*=gridrow_{idx}]").first.click()
                 print(f"  Fallback: clicked gridrow_{idx}", flush=True)
                 break
             except Exception:
@@ -339,17 +331,7 @@ def navigate_to_purchase_order(driver):
     return True
 
 
-def dismiss_alert(driver):
-    """JavaScript alert 닫기 (데이터 없을 때 HELO가 alert 표시)"""
-    try:
-        alert = driver.switch_to.alert
-        alert.accept()
-        return True
-    except Exception:
-        return False
-
-
-def set_date_and_search(driver, target_date):
+def set_date_and_search(page, target_date):
     """날짜 설정 + 조회 버튼 클릭.
 
     target_date: "YYYY-MM-DD" 형식. None이면 기본 날짜(오늘)로 조회.
@@ -358,30 +340,32 @@ def set_date_and_search(driver, target_date):
     date_val = dt.strftime("%Y%m%d")
 
     print(f"Setting date to {date_val} and searching...", flush=True)
-    result = driver.execute_script(
+    result = page.evaluate(
         f"""
-        try {{
-            var app = nexacro.getApplication();
-            var form = app.mainframe.childframe.form;
-            var win = form.workDiv.form.WIN1410.form;
-            win.divSearch.form.calSGiday.set_value("{date_val}");
-            win.buttonDiv.form.searchButton.click();
-            return "ok";
-        }} catch(e) {{
-            return "error: " + e.message;
+        () => {{
+            try {{
+                var app = nexacro.getApplication();
+                var form = app.mainframe.childframe.form;
+                var win = form.workDiv.form.WIN1410.form;
+                win.divSearch.form.calSGiday.set_value("{date_val}");
+                win.buttonDiv.form.searchButton.click();
+                return "ok";
+            }} catch(e) {{
+                return "error: " + e.message;
+            }}
         }}
     """
     )
     print(f"  Search: {result}", flush=True)
     time.sleep(6)
-    dismiss_alert(driver)
+    # dialog handler auto-accepts alerts
     time.sleep(1)
     return result == "ok"
 
 
 # ─── 데이터 추출 / 파싱 ──────────────────────────────────────────
 
-def extract_and_aggregate(driver):
+def extract_and_aggregate(page):
     """dsEaiOrder에서 자재코드별 집계 데이터 추출.
 
     HELO 구조: 각 자재에 식당별 행 + ZTOT(소계) 행.
@@ -392,44 +376,44 @@ def extract_and_aggregate(driver):
     Returns: list of {mATNR, mAKTX, gROES, mEINS, total_qty, store_count}
     """
     print("Extracting and aggregating dsEaiOrder...", flush=True)
-    result = driver.execute_script(
+    result = page.evaluate(
         """
-        try {
-            var ds = nexacro.getApplication().mainframe.childframe.form
-                     .workDiv.form.WIN1410.form.dsEaiOrder;
-            var count = ds.getRowCount();
-            if (count === 0) return JSON.stringify({count: 0, items: {}});
+        () => {
+            try {
+                var ds = nexacro.getApplication().mainframe.childframe.form
+                         .workDiv.form.WIN1410.form.dsEaiOrder;
+                var count = ds.getRowCount();
+                if (count === 0) return JSON.stringify({count: 0, items: {}});
 
-            var items = {};
-            for (var r = 0; r < count; r++) {
-                var code = String(ds.getColumn(r, 'mATNR') || '');
-                var kunnr = String(ds.getColumn(r, 'kUNNR') || '');
+                var items = {};
+                for (var r = 0; r < count; r++) {
+                    var code = String(ds.getColumn(r, 'mATNR') || '');
+                    var kunnr = String(ds.getColumn(r, 'kUNNR') || '');
 
-                if (!items[code]) {
-                    items[code] = {
-                        mATNR: code, mAKTX: '', gROES: '', mEINS: '',
-                        total_qty: 0, store_count: 0
-                    };
-                }
+                    if (!items[code]) {
+                        items[code] = {
+                            mATNR: code, mAKTX: '', gROES: '', mEINS: '',
+                            total_qty: 0, store_count: 0
+                        };
+                    }
 
-                if (kunnr === 'ZTOT') {
-                    // 소계 행: 수량 합산
-                    items[code].total_qty += parseFloat(
-                        String(ds.getColumn(r, 'mENGE') || '0')
-                    );
-                } else {
-                    // 일반 행: 이름/규격 가져오기 (첫 번째만)
-                    items[code].store_count++;
-                    if (!items[code].mAKTX) {
-                        items[code].mAKTX = String(ds.getColumn(r, 'mAKTX') || '');
-                        items[code].gROES = String(ds.getColumn(r, 'gROES') || '');
-                        items[code].mEINS = String(ds.getColumn(r, 'mEINS') || '');
+                    if (kunnr === 'ZTOT') {
+                        items[code].total_qty += parseFloat(
+                            String(ds.getColumn(r, 'mENGE') || '0')
+                        );
+                    } else {
+                        items[code].store_count++;
+                        if (!items[code].mAKTX) {
+                            items[code].mAKTX = String(ds.getColumn(r, 'mAKTX') || '');
+                            items[code].gROES = String(ds.getColumn(r, 'gROES') || '');
+                            items[code].mEINS = String(ds.getColumn(r, 'mEINS') || '');
+                        }
                     }
                 }
+                return JSON.stringify({count: count, items: items});
+            } catch(e) {
+                return JSON.stringify({error: e.message});
             }
-            return JSON.stringify({count: count, items: items});
-        } catch(e) {
-            return JSON.stringify({error: e.message});
         }
     """
     )
@@ -713,30 +697,32 @@ def fill_helo_data(master_file, target_date, match_results, dry_run=False):
 
 def scrape_helo(target_date, extract_only=False, dry_run=False, master_file=DEFAULT_MASTER):
     """메인: HELO 스크래핑 → 재고시트 2차출고 입력"""
-    driver = None
+    pw = None
+    browser = None
+    page = None
     try:
-        driver = init_driver()
+        pw, browser, page = init_browser()
 
         # 1. 로그인
-        if not login_helo(driver):
+        if not login_helo(page):
             print("HELO login failed.", flush=True)
             return None
 
         # 2. 구매오더 메뉴 이동
-        navigate_to_purchase_order(driver)
+        navigate_to_purchase_order(page)
 
         # 3. 날짜 설정 + 조회
-        if not set_date_and_search(driver, target_date):
+        if not set_date_and_search(page, target_date):
             print("Search failed.", flush=True)
             return None
 
         # 4. 데이터 추출 + 집계 (JS에서 그룹핑)
-        agg_items = extract_and_aggregate(driver)
+        agg_items = extract_and_aggregate(page)
         if not agg_items:
             print("No data for this date.", flush=True)
             ss_path = os.path.join(project_root, "debug_helo_screenshot.png")
             try:
-                driver.save_screenshot(ss_path)
+                page.screenshot(path=ss_path)
                 print(f"Screenshot: {ss_path}", flush=True)
             except Exception:
                 pass
@@ -808,10 +794,12 @@ def scrape_helo(target_date, extract_only=False, dry_run=False, master_file=DEFA
         return None
 
     finally:
-        if driver:
+        if browser:
             print("\nClosing browser...", flush=True)
             time.sleep(2)
-            driver.quit()
+            browser.close()
+        if pw:
+            pw.stop()
 
 
 if __name__ == "__main__":
