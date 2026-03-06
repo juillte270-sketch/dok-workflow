@@ -276,20 +276,61 @@ def _render_assign_tab(date_compact: str):
     else:
         st.success("모든 매장이 배정되었습니다.")
 
-    # 배정 완료 현황
+    # 배정 완료 현황 + 재배정
     if assigned:
         st.subheader("배정 현황")
-        # 기사별 그룹핑
         by_driver: dict[str, list] = {}
         for d in assigned:
             dname = d.get("driverName", "미지정")
             by_driver.setdefault(dname, []).append(d)
+
+        other_drivers = [n for n in driver_options if n != selected_name]
 
         for dname, stores in by_driver.items():
             with st.expander(f"🚛 {dname} ({len(stores)}개 매장)"):
                 for d in stores:
                     status = STATUS_LABEL.get(d.get("status", ""), d.get("status", ""))
                     st.text(f"  #{d.get('order', 0)} {d.get('storeName', '')} — {status}")
+
+                # 재배정 UI
+                if other_drivers:
+                    st.divider()
+                    reassign_options = {
+                        f"#{d['order']} {d['storeName']}": d["id"]
+                        for d in stores
+                    }
+                    reassign_key = f"reassign_{dname}"
+                    picked = st.multiselect(
+                        "재배정할 매장",
+                        options=list(reassign_options.keys()),
+                        key=reassign_key,
+                    )
+                    target_key = f"target_{dname}"
+                    target_name = st.selectbox(
+                        "이동할 기사",
+                        options=other_drivers,
+                        key=target_key,
+                    )
+                    if picked and target_name:
+                        ids = [reassign_options[p] for p in picked]
+                        target_driver = driver_options[target_name]
+                        btn_key = f"btn_reassign_{dname}"
+                        if st.button(
+                            f"{len(picked)}개 → {target_name} 재배정",
+                            key=btn_key,
+                        ):
+                            with st.spinner("재배정 중..."):
+                                try:
+                                    fb.assign_driver(
+                                        date_compact,
+                                        target_driver["uid"],
+                                        target_name,
+                                        ids,
+                                    )
+                                    st.success(f"{target_name}에게 {len(ids)}개 매장 재배정 완료!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"재배정 실패: {e}")
 
 
 # ─── Tab 3: 실시간 추적 ──────────────────────────────────────
