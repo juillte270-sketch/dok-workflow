@@ -235,6 +235,11 @@ def _render_inner(get_date_str, get_date_compact):
 
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):
+        st.caption(
+            "**일괄 실행**: 오전 5단계를 순차 실행합니다.\n"
+            "1️⃣ 발주처리 → 2️⃣ 발주시트 → 3️⃣ 가명세서 → 4️⃣ 단가표 → 5️⃣ 식봄가\n\n"
+            "HELO·경매가·영수증 등은 별도 시간대에 개별 실행하세요."
+        )
         if st.button("일괄 실행 (1-5)", type="primary", key="btn_batch_morning"):
             _run_batch_morning(date_str, settings)
         if st.button("카톡 요약 전송", key="btn_kakao_summary"):

@@ -152,6 +152,89 @@ def render(get_date_str, get_date_compact):
             shown_compacts.add(dc)
             _show_final_files(dc)
 
+    st.divider()
+
+    # --- Report KakaoTalk sending ---
+    _render_report_section(date_str, settings)
+
+
+def _render_report_section(date_str, settings):
+    """일일/주간 리포트 카카오톡 전송 UI."""
+    st.subheader("리포트 카카오톡 전송")
+    st.caption("마스터 파일 데이터 기반 비즈니스 리포트를 생성하여 카카오톡으로 전송합니다.")
+
+    import datetime as _dt
+
+    col_daily, col_weekly = st.columns(2)
+
+    with col_daily:
+        st.markdown("**일일 리포트**")
+        preview_daily = st.checkbox("미리보기만", value=False, key="rpt_daily_preview")
+        if st.button(
+            "미리보기" if preview_daily else "일일 리포트 전송",
+            key="btn_rpt_daily",
+        ):
+            args = [
+                "--type", "daily",
+                "--date", date_str,
+                "--master", settings["master_file"],
+            ]
+            if preview_daily:
+                args.append("--preview")
+            with st.spinner("일일 리포트 생성 중..."):
+                success, stdout, stderr, elapsed = run_script(
+                    "generate_business_report.py", args, timeout=get_timeout("report"),
+                )
+            if success:
+                label = "미리보기 완료" if preview_daily else "전송 완료"
+                st.toast(f"{label} ({format_elapsed(elapsed)})")
+                append_log(f"일일 리포트 {label} ({format_elapsed(elapsed)})")
+                if stdout:
+                    with st.expander("리포트 내용", expanded=True):
+                        st.text(stdout[-5000:])
+            else:
+                st.error("일일 리포트 실패")
+                if stderr:
+                    st.code(stderr[-2000:], language="text")
+
+    with col_weekly:
+        st.markdown("**주간 리포트**")
+        target_date = _dt.datetime.strptime(date_str, "%Y-%m-%d")
+        month_str = target_date.strftime("%Y-%m")
+        week_num = (target_date.day - 1) // 7 + 1
+
+        sel_month = st.text_input("대상 월", value=month_str, key="rpt_week_month")
+        sel_week = st.number_input("주차", min_value=1, max_value=5, value=week_num, key="rpt_week_num")
+        preview_weekly = st.checkbox("미리보기만", value=False, key="rpt_weekly_preview")
+
+        if st.button(
+            "미리보기" if preview_weekly else "주간 리포트 전송",
+            key="btn_rpt_weekly",
+        ):
+            args = [
+                "--type", "weekly",
+                "--month", sel_month,
+                "--week", str(sel_week),
+                "--master", settings["master_file"],
+            ]
+            if preview_weekly:
+                args.append("--preview")
+            with st.spinner("주간 리포트 생성 중..."):
+                success, stdout, stderr, elapsed = run_script(
+                    "generate_business_report.py", args, timeout=get_timeout("report"),
+                )
+            if success:
+                label = "미리보기 완료" if preview_weekly else "전송 완료"
+                st.toast(f"{label} ({format_elapsed(elapsed)})")
+                append_log(f"주간 리포트 {label} ({format_elapsed(elapsed)})")
+                if stdout:
+                    with st.expander("리포트 내용", expanded=True):
+                        st.text(stdout[-5000:])
+            else:
+                st.error("주간 리포트 실패")
+                if stderr:
+                    st.code(stderr[-2000:], language="text")
+
 
 def _check_and_show_prerequisites(date_str):
     """Show prerequisite status (informational only, does NOT block execution).
