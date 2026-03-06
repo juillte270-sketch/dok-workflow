@@ -10,5 +10,8 @@ google-api-python-client>=2.100.0
 google-auth>=2.22.0
 google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
+firebase-admin>=6.2.0
+folium>=0.15.0
+streamlit-folium>=0.18.0
 # playwright is installed locally only (not on Streamlit Cloud)
 # playwright>=1.50.0
