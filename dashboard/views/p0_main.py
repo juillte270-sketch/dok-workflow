@@ -233,6 +233,9 @@ def _render_inner(get_date_str, get_date_compact):
         unsafe_allow_html=True,
     )
 
+    # === 배송 현황 요약 ===
+    _render_delivery_summary(date_compact)
+
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):
         st.caption(
@@ -476,3 +479,57 @@ def _send_kakao_summary(date_str, progress):
     else:
         st.error("카톡 전송 실패")
         st.code(stderr[-1000:], language="text")
+
+
+def _render_delivery_summary(date_compact):
+    """메인 대시보드에 배송 현황 요약 카드 표시."""
+    try:
+        from dashboard import firebase_service as fb
+        deliveries = fb.get_deliveries(date_compact)
+    except Exception:
+        deliveries = None
+
+    if not deliveries:
+        # 데이터 없으면 카드만 간략히
+        st.markdown(
+            '<div style="border:1px solid #334155;border-radius:10px;padding:12px 14px;margin:8px 0">'
+            '<div style="display:flex;align-items:center;justify-content:space-between">'
+            '<b style="font-size:0.92rem">🚛 배송</b>'
+            '<span style="color:#64748B;font-size:0.8rem">데이터 없음</span>'
+            '</div></div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    stats = fb.compute_delivery_stats(deliveries)
+    total = stats["total"]
+    done = stats["delivered"]
+    transit = stats["in_transit"]
+    arrived = stats["arrived"]
+    pending = stats["pending"]
+    issue = stats["issue"]
+    pct = int(done / total * 100) if total else 0
+
+    # 진행률 바 색상
+    bar_color = "#4ADE80" if pct == 100 else "#818CF8"
+    issue_html = f'<span style="color:#F87171;margin-left:6px">문제 {issue}</span>' if issue else ""
+
+    st.markdown(
+        f'<div style="border:1px solid #334155;border-radius:10px;padding:12px 14px;margin:8px 0">'
+        f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+        f'<b style="font-size:0.92rem">🚛 배송</b>'
+        f'<span style="font-size:0.78rem;color:#94A3B8">'
+        f'완료 <b style="color:#4ADE80">{done}</b> · '
+        f'이동 <b style="color:#60A5FA">{transit}</b> · '
+        f'입고 <b style="color:#FBBF24">{arrived}</b> · '
+        f'대기 <b style="color:#94A3B8">{pending}</b>'
+        f'{issue_html}'
+        f'</span></div>'
+        f'<div style="background:#1E293B;border-radius:4px;height:6px;overflow:hidden">'
+        f'<div style="background:{bar_color};width:{pct}%;height:100%;border-radius:4px"></div>'
+        f'</div>'
+        f'<div style="text-align:right;font-size:0.7rem;color:#64748B;margin-top:2px">'
+        f'{done}/{total} ({pct}%)</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
