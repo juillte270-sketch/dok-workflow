@@ -479,21 +479,36 @@ def _render_item_tab(get_date_str, get_date_compact):
 
 def _render_trend_tab(get_date_str, get_date_compact):
     """Tab 2: 추이 분석."""
-    col_item, col_period = st.columns([2, 1])
-    with col_item:
-        selected = st.selectbox("품목", ALL_ITEMS, key="auc_trend_item")
+    col_mode, col_period = st.columns([2, 1])
+    with col_mode:
+        mode = st.radio("검색 방식", ["품목 선택", "자유 검색"], horizontal=True, key="auc_trend_mode")
     with col_period:
         period = st.radio("기간", ["7일", "30일", "전년비교"], horizontal=True, key="auc_period")
+
+    if mode == "품목 선택":
+        selected = st.selectbox("품목", ALL_ITEMS, key="auc_trend_item")
+    else:
+        selected = st.text_input("검색어 입력 (예: 딸기, 사과, 한우)", key="auc_trend_free")
 
     if not st.button("추이 조회", type="primary", key="btn_auc_trend"):
         return
 
-    search = _get_search_term(selected)
-    if search is None:
-        st.warning(f"'{selected}'은(는) 경매 데이터가 없는 품목입니다.")
+    if not selected or not selected.strip():
+        st.warning("품목을 선택하거나 검색어를 입력해주세요.")
         return
 
-    today = datetime.date.today()
+    selected = selected.strip()
+
+    if mode == "품목 선택":
+        search = _get_search_term(selected)
+        if search is None:
+            st.warning(f"'{selected}'은(는) 경매 데이터가 없는 품목입니다.")
+            return
+    else:
+        search = selected
+
+    from dashboard.utils import now_kst
+    today = now_kst().date()
 
     if period == "전년비교":
         _render_yoy(search, selected, today)
