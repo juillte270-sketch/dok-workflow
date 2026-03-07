@@ -238,49 +238,55 @@ def _render_status_tab(date_compact: str):
         items = d.get("items", [])
         store_name = d.get("storeName", "")
         with st.expander(f"#{d.get('order', 0)} {store_name} ({len(items)}개)"):
-            # 주소 + 출입정보
+            # 주소 + 출입정보 (각각 별도 줄)
             addr = fb.get_store_address(store_name) if fb else None
             entry = fb.get_store_entry(store_name) if fb else None
-            if addr or entry:
-                info_parts = []
-                if addr:
-                    info_parts.append(f"📍 {addr}")
-                if entry:
-                    info_parts.append(f"🔑 {entry}")
-                st.caption(" ｜ ".join(info_parts))
+            if addr:
+                st.markdown(f'<div style="font-size:0.78rem;color:#94A3B8;margin-bottom:2px;word-break:break-all">📍 {addr}</div>', unsafe_allow_html=True)
+            if entry:
+                st.markdown(f'<div style="font-size:0.78rem;color:#94A3B8;margin-bottom:4px">🔑 {entry}</div>', unsafe_allow_html=True)
 
             # 배송 사진
             photo_url = d.get("photoUrl")
             if photo_url:
-                st.image(photo_url, caption="배송 사진", width=300)
+                st.image(photo_url, caption="배송 사진", width=250)
 
-            # 타임라인
+            # 타임라인 (세로 배치)
             started = d.get("startedAt")
-            arrived = d.get("arrivedAt")
+            arrived_at = d.get("arrivedAt")
             completed = d.get("completedAt")
-            if started or arrived or completed:
-                timeline = []
+            if started or arrived_at or completed:
+                tl_html = '<div style="font-size:0.78rem;color:#94A3B8;margin:4px 0;line-height:1.6">'
                 if started:
-                    timeline.append(f"출발 {_fmt_timestamp(started)}")
-                if arrived:
-                    timeline.append(f"도착 {_fmt_timestamp(arrived)}")
+                    tl_html += f'🚛 출발 <b>{_fmt_timestamp(started)}</b><br>'
+                if arrived_at:
+                    tl_html += f'📦 도착 <b>{_fmt_timestamp(arrived_at)}</b><br>'
                 if completed:
-                    timeline.append(f"완료 {_fmt_timestamp(completed)}")
-                st.caption(" → ".join(timeline))
+                    tl_html += f'✅ 완료 <b>{_fmt_timestamp(completed)}</b>'
+                tl_html += '</div>'
+                st.markdown(tl_html, unsafe_allow_html=True)
 
             # 품목 목록
+            items_html = ""
             for item in items:
-                color_tag = ""
+                color_dot = ""
                 if item.get("color") == "red":
-                    color_tag = " 🔴"
+                    color_dot = '<span style="color:#EF4444"> ●</span>'
                 elif item.get("color") == "blue":
-                    color_tag = " 🔵"
-                st.text(f"  {item.get('name', '')}  {item.get('qty', '')}{color_tag}")
+                    color_dot = '<span style="color:#3B82F6"> ●</span>'
+                items_html += (
+                    f'<div style="font-size:0.82rem;padding:1px 0">'
+                    f'{item.get("name", "")} '
+                    f'<span style="color:#64748B">{item.get("qty", "")}</span>'
+                    f'{color_dot}</div>'
+                )
+            if items_html:
+                st.markdown(items_html, unsafe_allow_html=True)
 
             # 메모
             notes = d.get("notes")
             if notes:
-                st.info(f"📝 {notes}")
+                st.markdown(f'<div style="font-size:0.78rem;color:#FBBF24;margin-top:4px">📝 {notes}</div>', unsafe_allow_html=True)
 
 
 # ─── Tab 2: 기사 배정 ────────────────────────────────────────
