@@ -172,40 +172,52 @@ def _render_status_tab(date_compact: str):
         unsafe_allow_html=True,
     )
 
-    # 매장별 상태 테이블
-    st.subheader("매장별 상태")
-
-    table_data = []
+    # 매장별 상태 리스트 (모바일 대응)
+    rows_html = ""
     for d in deliveries:
         items = d.get("items", [])
         item_count = len(items)
         red_count = sum(1 for i in items if i.get("color") == "red")
         blue_count = sum(1 for i in items if i.get("color") == "blue")
 
-        color_info = ""
-        if red_count or blue_count:
-            parts = []
-            if red_count:
-                parts.append(f"재고{red_count}")
-            if blue_count:
-                parts.append(f"시장{blue_count}")
-            color_info = f" ({', '.join(parts)})"
+        color_tags = ""
+        if red_count:
+            color_tags += f'<span style="color:#F87171;font-size:0.7rem">재고{red_count}</span> '
+        if blue_count:
+            color_tags += f'<span style="color:#60A5FA;font-size:0.7rem">시장{blue_count}</span>'
 
-        table_data.append({
-            "순서": d.get("order", 0),
-            "매장": d.get("storeName", ""),
-            "품목 수": f"{item_count}{color_info}",
-            "기사": d.get("driverName") or "-",
-            "상태": STATUS_LABEL.get(d.get("status", ""), d.get("status", "")),
-        })
+        status = d.get("status", "pending")
+        s_color = {"pending": "#94A3B8", "in_transit": "#60A5FA", "arrived": "#FBBF24",
+                    "delivered": "#4ADE80", "issue": "#F87171"}.get(status, "#94A3B8")
+        s_label = {"pending": "대기", "in_transit": "이동", "arrived": "입고",
+                    "delivered": "완료", "issue": "문제"}.get(status, status)
+        driver = d.get("driverName") or ""
+        driver_html = f'<span style="color:#94A3B8;font-size:0.75rem">{driver}</span>' if driver else ""
 
-    st.dataframe(table_data, use_container_width=True, hide_index=True)
+        rows_html += (
+            f'<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;'
+            f'border-bottom:1px solid #1E293B">'
+            f'<span style="color:#64748B;font-size:0.75rem;min-width:18px">{d.get("order", 0)}</span>'
+            f'<span style="flex:1;font-size:0.85rem;line-height:1.3">'
+            f'<b>{d.get("storeName", "")}</b> '
+            f'<span style="color:#64748B;font-size:0.75rem">{item_count}개</span> '
+            f'{color_tags}</span>'
+            f'<span style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">'
+            f'<span style="color:{s_color};font-size:0.75rem;font-weight:600">{s_label}</span>'
+            f'{driver_html}</span>'
+            f'</div>'
+        )
+
+    st.markdown(
+        f'<div style="border:1px solid #334155;border-radius:10px;overflow:hidden;margin:8px 0">'
+        f'{rows_html}</div>',
+        unsafe_allow_html=True,
+    )
 
     # 매장 상세 expander
-    st.subheader("매장 상세")
     for d in deliveries:
         items = d.get("items", [])
-        with st.expander(f"#{d.get('order', 0)} {d.get('storeName', '')} ({len(items)}개 품목)"):
+        with st.expander(f"#{d.get('order', 0)} {d.get('storeName', '')} ({len(items)}개)"):
             for item in items:
                 color_tag = ""
                 if item.get("color") == "red":
@@ -391,16 +403,24 @@ def _render_tracking_tab(date_compact: str):
         except Exception:
             pass
 
-    # 요약 메트릭
+    # 요약 메트릭 (모바일 대응)
     stats = fb.compute_delivery_stats(deliveries)
     assigned_count = sum(1 for d in deliveries if d.get("assignedTo"))
     unassigned_count = stats["total"] - assigned_count
 
-    cols = st.columns(4)
-    cols[0].metric("전체", stats["total"])
-    cols[1].metric("배정", assigned_count)
-    cols[2].metric("완료", stats["delivered"])
-    cols[3].metric("미배정", unassigned_count)
+    st.markdown(
+        f'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem">'
+        f'전체 <b>{stats["total"]}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#60A5FA">'
+        f'배정 <b>{assigned_count}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#4ADE80">'
+        f'완료 <b>{stats["delivered"]}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#94A3B8">'
+        f'미배정 <b>{unassigned_count}</b></span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     # 지도 생성
     m = folium.Map(
