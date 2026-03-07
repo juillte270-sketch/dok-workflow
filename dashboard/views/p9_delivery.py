@@ -141,20 +141,36 @@ def _render_status_tab(date_compact: str):
             "issue": sum(1 for d in deliveries if d.get("status") == "issue"),
         }
 
-    # 6개 메트릭 카드
-    cols = st.columns(6)
-    cols[0].metric("전체", stats["total"])
-    cols[1].metric("대기", stats["pending"])
-    cols[2].metric("이동중", stats["in_transit"])
-    cols[3].metric("입고중", stats["arrived"])
-    cols[4].metric("완료", stats["delivered"])
-    cols[5].metric("문제", stats["issue"])
-
-    # 진행률
+    # 메트릭 + 진행률 (모바일 대응 HTML)
     total = stats["total"]
     delivered = stats["delivered"]
-    progress = delivered / total if total > 0 else 0
-    st.progress(progress, text=f"진행률: {delivered}/{total} ({int(progress * 100)}%)")
+    pct = int(delivered / total * 100) if total > 0 else 0
+    bar_color = "#4ADE80" if pct == 100 else "#818CF8"
+    issue_html = (
+        f'<span style="background:#7F1D1D;color:#FCA5A5;padding:2px 8px;border-radius:12px">'
+        f'문제 <b>{stats["issue"]}</b></span>'
+        if stats["issue"] else ""
+    )
+
+    st.markdown(
+        f'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem">'
+        f'전체 <b>{total}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#94A3B8">'
+        f'대기 <b>{stats["pending"]}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#60A5FA">'
+        f'이동 <b>{stats["in_transit"]}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#FBBF24">'
+        f'입고 <b>{stats["arrived"]}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#4ADE80">'
+        f'완료 <b>{delivered}</b></span>'
+        f'{issue_html}'
+        f'</div>'
+        f'<div style="background:#1E293B;border-radius:4px;height:6px;margin:4px 0;overflow:hidden">'
+        f'<div style="background:{bar_color};width:{pct}%;height:100%;border-radius:4px"></div></div>'
+        f'<div style="text-align:right;font-size:0.72rem;color:#64748B">{delivered}/{total} ({pct}%)</div>',
+        unsafe_allow_html=True,
+    )
 
     # 매장별 상태 테이블
     st.subheader("매장별 상태")
