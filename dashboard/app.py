@@ -489,6 +489,7 @@ with st.sidebar:
         index=default_idx,
         format_func=_fmt_page,
         label_visibility="collapsed",
+        key="page_selector",
     )
 
 

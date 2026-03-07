@@ -324,6 +324,7 @@ def _render_assign_tab(date_compact: str):
         "배정할 기사",
         options=list(driver_options.keys()),
         horizontal=True,
+        key=f"assign_driver_{date_compact}",
     )
     selected_driver = driver_options[selected_name]
 
