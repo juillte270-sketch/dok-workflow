@@ -177,14 +177,12 @@ def _render_status_tab(date_compact: str):
         f'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'
         f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem">'
         f'전체 <b>{total}</b></span>'
-        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#94A3B8">'
-        f'대기 <b>{stats["pending"]}</b></span>'
         f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#60A5FA">'
-        f'이동 <b>{stats["in_transit"]}</b></span>'
+        f'배송출발 <b>{stats["in_transit"]}</b></span>'
         f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#FBBF24">'
-        f'입고 <b>{stats["arrived"]}</b></span>'
+        f'입고중 <b>{stats["arrived"]}</b></span>'
         f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#4ADE80">'
-        f'완료 <b>{delivered}</b></span>'
+        f'배송완료 <b>{delivered}</b></span>'
         f'{issue_html}'
         f'</div>'
         f'<div style="background:#1E293B;border-radius:4px;height:6px;margin:4px 0;overflow:hidden">'
@@ -210,8 +208,8 @@ def _render_status_tab(date_compact: str):
         status = d.get("status", "pending")
         s_color = {"pending": "#EF4444", "in_transit": "#EF4444", "arrived": "#F97316",
                     "delivered": "#3B82F6", "issue": "#DC2626"}.get(status, "#94A3B8")
-        s_label = {"pending": "대기", "in_transit": "이동", "arrived": "입고",
-                    "delivered": "완료", "issue": "문제"}.get(status, status)
+        s_label = {"pending": "대기", "in_transit": "배송출발", "arrived": "입고중",
+                    "delivered": "배송완료", "issue": "문제"}.get(status, status)
         driver = d.get("driverName") or ""
         driver_html = f'<span style="color:#94A3B8;font-size:0.75rem">{driver}</span>' if driver else ""
 

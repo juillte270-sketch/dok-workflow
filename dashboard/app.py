@@ -481,12 +481,12 @@ with st.sidebar:
 
     # nav_page로 페이지 전환 지원
     nav_default = st.session_state.pop("nav_page", None)
-    default_idx = _page_options.index(nav_default) if nav_default in _page_options else 0
+    if nav_default and nav_default in _page_options:
+        st.session_state["page_selector"] = nav_default
 
     page = st.radio(
         "메뉴",
         _page_options,
-        index=default_idx,
         format_func=_fmt_page,
         label_visibility="collapsed",
         key="page_selector",
