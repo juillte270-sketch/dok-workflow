@@ -34,11 +34,11 @@ STATUS_LABEL = {
 }
 
 STATUS_COLOR_MAP = {
-    "pending": "gray",
-    "in_transit": "blue",
-    "arrived": "orange",
-    "delivered": "green",
-    "issue": "red",
+    "pending": "#EF4444",     # 빨강 — 배송 전
+    "in_transit": "#EF4444",  # 빨강 — 이동중 (아직 미완료)
+    "arrived": "#F97316",     # 주황 — 입고중
+    "delivered": "#3B82F6",   # 파랑 — 배송완료
+    "issue": "#DC2626",       # 진빨강 — 문제
 }
 
 DRIVER_COLORS = ["#E74C3C", "#3498DB", "#2ECC71", "#9B59B6", "#F39C12", "#1ABC9C"]
@@ -187,8 +187,8 @@ def _render_status_tab(date_compact: str):
             color_tags += f'<span style="color:#60A5FA;font-size:0.7rem">시장{blue_count}</span>'
 
         status = d.get("status", "pending")
-        s_color = {"pending": "#94A3B8", "in_transit": "#60A5FA", "arrived": "#FBBF24",
-                    "delivered": "#4ADE80", "issue": "#F87171"}.get(status, "#94A3B8")
+        s_color = {"pending": "#EF4444", "in_transit": "#EF4444", "arrived": "#F97316",
+                    "delivered": "#3B82F6", "issue": "#DC2626"}.get(status, "#94A3B8")
         s_label = {"pending": "대기", "in_transit": "이동", "arrived": "입고",
                     "delivered": "완료", "issue": "문제"}.get(status, status)
         driver = d.get("driverName") or ""
@@ -422,12 +422,36 @@ def _render_tracking_tab(date_compact: str):
         unsafe_allow_html=True,
     )
 
-    # 지도 생성
+    # 지도 생성 (Vworld 한국어 타일)
     m = folium.Map(
         location=[37.50, 127.05],
         zoom_start=11,
-        tiles="CartoDB positron",
+        tiles=None,
     )
+    folium.TileLayer(
+        tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attr="OpenStreetMap",
+        name="OpenStreetMap",
+    ).add_to(m)
+    folium.TileLayer(
+        tiles="http://api.vworld.kr/req/wmts/1.0.0/EEAB40D2-8498-3E92-8E60-40B0B5010485/Base/{z}/{y}/{x}.png",
+        attr="Vworld",
+        name="Vworld 한국어",
+    ).add_to(m)
+    folium.LayerControl().add_to(m)
+
+    # 범례
+    legend_html = (
+        '<div style="position:fixed;bottom:30px;left:10px;z-index:1000;'
+        'background:rgba(0,0,0,0.75);padding:8px 12px;border-radius:8px;'
+        'font-size:12px;color:white;line-height:1.6">'
+        '<span style="color:#EF4444">●</span> 대기/이동 &nbsp;'
+        '<span style="color:#F97316">●</span> 입고중 &nbsp;'
+        '<span style="color:#3B82F6">●</span> 완료 &nbsp;'
+        '<span style="color:#8B5CF6">●</span> 기사'
+        '</div>'
+    )
+    m.get_root().html.add_child(folium.Element(legend_html))
 
     # 매장 마커
     for d in deliveries:
@@ -437,7 +461,7 @@ def _render_tracking_tab(date_compact: str):
 
         lat, lng = coords
         status = d.get("status", "pending")
-        color = STATUS_COLOR_MAP.get(status, "gray")
+        color = STATUS_COLOR_MAP.get(status, "#EF4444")
         driver_info = f"<br>기사: {d['driverName']}" if d.get("driverName") else ""
         items_count = len(d.get("items", []))
 
@@ -454,7 +478,7 @@ def _render_tracking_tab(date_compact: str):
             color=color,
             fill=True,
             fill_color=color,
-            fill_opacity=0.7,
+            fill_opacity=0.8,
             popup=folium.Popup(popup_html, max_width=200),
             tooltip=d.get("storeName", ""),
         ).add_to(m)
@@ -476,7 +500,7 @@ def _render_tracking_tab(date_compact: str):
 
         name = driver_names_map.get(uid, uid[:4])
         initial = name[0] if name else "?"
-        color = DRIVER_COLORS[idx % len(DRIVER_COLORS)]
+        color = "#8B5CF6"  # 기사 마커: 보라
 
         # 온라인 판정: updatedAt이 10분 이내
         online = False
@@ -517,15 +541,14 @@ def _render_tracking_tab(date_compact: str):
             tooltip=f"{name} ({'온라인' if online else '오프라인'})",
         ).add_to(m)
 
-    # 지도 렌더링
-    st_folium(m, width=700, height=500, returned_objects=[])
+    # 지도 렌더링 (모바일 대응: 폭 100%)
+    st_folium(m, use_container_width=True, height=450, returned_objects=[])
 
     # 기사별 상세 카드
     if driver_locations:
         st.subheader("기사 상세")
         for idx, (uid, loc) in enumerate(driver_locations.items()):
             name = driver_names_map.get(uid, uid[:4])
-            color = DRIVER_COLORS[idx % len(DRIVER_COLORS)]
 
             # 온라인 상태
             online = False
