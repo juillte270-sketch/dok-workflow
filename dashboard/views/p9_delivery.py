@@ -5,6 +5,7 @@ p9_delivery.py — 배송 관리 대시보드 페이지
   - 현황: Firebase에서 배송 상태 실시간 조회 (로컬 JSON 폴백)
   - 기사 배정: 기사 선택 → 매장 배정 (Firebase 배치 쓰기)
   - 실시간 추적: folium 지도 + 기사 위치 (RTDB)
+  - 리포트: 기사별 배송 성과 분석 (소요시간, 완료율, 타임라인)
   - 업로드: processed_orders → Firebase 업로드
 """
 
@@ -512,9 +513,9 @@ def _render_tracking_tab(date_compact: str):
         '<div style="position:fixed;bottom:30px;left:10px;z-index:1000;'
         'background:rgba(0,0,0,0.75);padding:8px 12px;border-radius:8px;'
         'font-size:12px;color:white;line-height:1.6">'
-        '<span style="color:#EF4444">●</span> 대기/이동 &nbsp;'
+        '<span style="color:#3B82F6">●</span> 배송출발 &nbsp;'
         '<span style="color:#F97316">●</span> 입고중 &nbsp;'
-        '<span style="color:#3B82F6">●</span> 완료 &nbsp;'
+        '<span style="color:#10B981">●</span> 완료 &nbsp;'
         '<span style="color:#8B5CF6">●</span> 기사'
         '</div>'
     )
@@ -656,7 +657,245 @@ def _render_tracking_tab(date_compact: str):
                         st.text(f"  #{d.get('order', 0)} {d.get('storeName', '')} — {label}")
 
 
-# ─── Tab 4: 업로드 (기존 유지) ───────────────────────────────
+# ─── Tab 4: 리포트 ────────────────────────────────────────────
+
+def _ts_to_datetime(ts):
+    """Firebase Timestamp → datetime (KST). 실패 시 None."""
+    try:
+        if hasattr(ts, "timestamp"):
+            return datetime.fromtimestamp(ts.timestamp(), tz=KST)
+        elif isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(ts / 1000, tz=KST)
+        elif isinstance(ts, dict) and "_seconds" in ts:
+            return datetime.fromtimestamp(ts["_seconds"], tz=KST)
+        elif isinstance(ts, str):
+            dt = datetime.fromisoformat(ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=KST)
+            return dt
+    except Exception:
+        pass
+    return None
+
+
+def _render_report_tab(date_compact: str):
+    """리포트 탭: 기사별 배송 성과 분석."""
+
+    fb = _get_firebase()
+    if fb is None:
+        st.warning("Firebase 연결이 필요합니다.")
+        return
+
+    try:
+        deliveries = fb.get_deliveries(date_compact)
+    except Exception as e:
+        st.error(f"배송 데이터 로드 실패: {e}")
+        return
+
+    if not deliveries:
+        st.info(f"{date_compact} 배송 데이터가 없습니다.")
+        return
+
+    if st.button("🔄 새로고침", key="refresh_report"):
+        st.rerun()
+
+    # 전체 요약
+    stats = fb.compute_delivery_stats(deliveries)
+    total = stats["total"]
+    delivered = stats["delivered"]
+    pct = int(delivered / total * 100) if total > 0 else 0
+
+    # 전체 소요시간 계산
+    all_travel_mins = []
+    all_unload_mins = []
+    all_total_mins = []
+
+    for d in deliveries:
+        started = _ts_to_datetime(d.get("startedAt"))
+        arrived = _ts_to_datetime(d.get("arrivedAt"))
+        completed = _ts_to_datetime(d.get("completedAt"))
+
+        if started and arrived:
+            travel = (arrived - started).total_seconds() / 60
+            if 0 < travel < 300:
+                all_travel_mins.append(travel)
+        if arrived and completed:
+            unload = (completed - arrived).total_seconds() / 60
+            if 0 < unload < 300:
+                all_unload_mins.append(unload)
+        if started and completed:
+            total_t = (completed - started).total_seconds() / 60
+            if 0 < total_t < 600:
+                all_total_mins.append(total_t)
+
+    avg_travel = sum(all_travel_mins) / len(all_travel_mins) if all_travel_mins else 0
+    avg_unload = sum(all_unload_mins) / len(all_unload_mins) if all_unload_mins else 0
+    avg_total = sum(all_total_mins) / len(all_total_mins) if all_total_mins else 0
+
+    # 전체 요약 카드
+    st.markdown(
+        f'<div style="background:#1E293B;border-radius:10px;padding:14px;margin:8px 0">'
+        f'<div style="font-size:0.9rem;font-weight:bold;margin-bottom:8px">📊 전체 요약</div>'
+        f'<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:0.82rem">'
+        f'<div style="flex:1;min-width:100px;text-align:center">'
+        f'<div style="color:#64748B">완료율</div>'
+        f'<div style="font-size:1.3rem;font-weight:bold;color:#10B981">{pct}%</div>'
+        f'<div style="color:#64748B;font-size:0.72rem">{delivered}/{total}</div></div>'
+        f'<div style="flex:1;min-width:100px;text-align:center">'
+        f'<div style="color:#64748B">평균 이동</div>'
+        f'<div style="font-size:1.3rem;font-weight:bold;color:#3B82F6">{avg_travel:.0f}분</div></div>'
+        f'<div style="flex:1;min-width:100px;text-align:center">'
+        f'<div style="color:#64748B">평균 하차</div>'
+        f'<div style="font-size:1.3rem;font-weight:bold;color:#F97316">{avg_unload:.0f}분</div></div>'
+        f'<div style="flex:1;min-width:100px;text-align:center">'
+        f'<div style="color:#64748B">평균 총소요</div>'
+        f'<div style="font-size:1.3rem;font-weight:bold;color:#8B5CF6">{avg_total:.0f}분</div></div>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # 기사별 분류
+    by_driver: dict[str, list] = {}
+    for d in deliveries:
+        if d.get("assignedTo"):
+            dname = d.get("driverName", "미지정")
+            by_driver.setdefault(dname, []).append(d)
+
+    unassigned = [d for d in deliveries if not d.get("assignedTo")]
+
+    if not by_driver:
+        st.info("배정된 기사가 없습니다.")
+        return
+
+    # 기사별 성과 카드
+    for dname, driver_dels in by_driver.items():
+        d_total = len(driver_dels)
+        d_done = sum(1 for d in driver_dels if d.get("status") == "delivered")
+        d_pct = int(d_done / d_total * 100) if d_total > 0 else 0
+
+        # 기사별 시간 계산
+        d_travel = []
+        d_unload = []
+        d_total_mins = []
+
+        for d in driver_dels:
+            started = _ts_to_datetime(d.get("startedAt"))
+            arrived = _ts_to_datetime(d.get("arrivedAt"))
+            completed = _ts_to_datetime(d.get("completedAt"))
+
+            if started and arrived:
+                t = (arrived - started).total_seconds() / 60
+                if 0 < t < 300:
+                    d_travel.append(t)
+            if arrived and completed:
+                u = (completed - arrived).total_seconds() / 60
+                if 0 < u < 300:
+                    d_unload.append(u)
+            if started and completed:
+                tt = (completed - started).total_seconds() / 60
+                if 0 < tt < 600:
+                    d_total_mins.append(tt)
+
+        d_avg_travel = sum(d_travel) / len(d_travel) if d_travel else 0
+        d_avg_unload = sum(d_unload) / len(d_unload) if d_unload else 0
+
+        # 첫 출발 ~ 마지막 완료 총 근무시간
+        started_times = []
+        completed_times = []
+        for d in driver_dels:
+            s = _ts_to_datetime(d.get("startedAt"))
+            c = _ts_to_datetime(d.get("completedAt"))
+            if s:
+                started_times.append(s)
+            if c:
+                completed_times.append(c)
+
+        work_duration = ""
+        if started_times and completed_times:
+            first_start = min(started_times)
+            last_complete = max(completed_times)
+            work_mins = (last_complete - first_start).total_seconds() / 60
+            if 0 < work_mins < 720:
+                work_h = int(work_mins // 60)
+                work_m = int(work_mins % 60)
+                work_duration = f"{work_h}시간 {work_m}분" if work_h else f"{work_m}분"
+
+        with st.expander(f"🚛 {dname} — {d_done}/{d_total} 완료 ({d_pct}%)"):
+            # 성과 요약 HTML
+            html = '<div style="font-size:0.82rem;line-height:1.7">'
+
+            # 메트릭 행
+            html += (
+                f'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">'
+                f'<span style="background:#0F172A;padding:3px 8px;border-radius:6px">'
+                f'완료율 <b style="color:#10B981">{d_pct}%</b></span>'
+                f'<span style="background:#0F172A;padding:3px 8px;border-radius:6px">'
+                f'평균이동 <b style="color:#3B82F6">{d_avg_travel:.0f}분</b></span>'
+                f'<span style="background:#0F172A;padding:3px 8px;border-radius:6px">'
+                f'평균하차 <b style="color:#F97316">{d_avg_unload:.0f}분</b></span>'
+            )
+            if work_duration:
+                html += (
+                    f'<span style="background:#0F172A;padding:3px 8px;border-radius:6px">'
+                    f'총근무 <b style="color:#8B5CF6">{work_duration}</b></span>'
+                )
+            html += '</div>'
+
+            # 배송 타임라인
+            html += '<div style="border-top:1px solid #334155;padding-top:8px">'
+            for d in sorted(driver_dels, key=lambda x: x.get("order", 0)):
+                s = d.get("status", "pending")
+                s_color = STATUS_COLOR_MAP.get(s, "#94A3B8")
+                s_label = {"pending": "배송출발", "in_transit": "배송출발", "arrived": "입고중",
+                           "delivered": "완료", "issue": "문제"}.get(s, s)
+
+                started = _ts_to_datetime(d.get("startedAt"))
+                arrived = _ts_to_datetime(d.get("arrivedAt"))
+                completed = _ts_to_datetime(d.get("completedAt"))
+
+                # 시간 정보
+                time_parts = []
+                if started:
+                    time_parts.append(f'출발 {started.strftime("%H:%M")}')
+                if arrived:
+                    time_parts.append(f'도착 {arrived.strftime("%H:%M")}')
+                if completed:
+                    time_parts.append(f'완료 {completed.strftime("%H:%M")}')
+                time_str = " → ".join(time_parts) if time_parts else ""
+
+                # 소요시간
+                dur_str = ""
+                if started and completed:
+                    dur = (completed - started).total_seconds() / 60
+                    if 0 < dur < 600:
+                        dur_str = f' ({dur:.0f}분)'
+
+                html += (
+                    f'<div style="padding:4px 0;border-bottom:1px solid #1E293B;display:flex;align-items:center;gap:6px">'
+                    f'<span style="color:#64748B;min-width:22px">#{d.get("order", 0)}</span>'
+                    f'<span style="flex:1"><b>{d.get("storeName", "")}</b></span>'
+                    f'<span style="color:{s_color};font-size:0.75rem;font-weight:600">{s_label}{dur_str}</span>'
+                    f'</div>'
+                )
+                if time_str:
+                    html += f'<div style="color:#64748B;font-size:0.72rem;padding:0 0 4px 28px">{time_str}</div>'
+
+            html += '</div></div>'
+            st.markdown(html, unsafe_allow_html=True)
+
+    # 미배정 매장
+    if unassigned:
+        st.markdown(
+            f'<div style="background:#7F1D1D;border-radius:8px;padding:10px;margin-top:10px;'
+            f'font-size:0.82rem">'
+            f'⚠️ 미배정 매장 <b>{len(unassigned)}개</b>: '
+            + ", ".join(f'#{d.get("order", 0)} {d.get("storeName", "")}' for d in unassigned)
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+
+
+# ─── Tab 5: 업로드 (기존 유지) ───────────────────────────────
 
 def _render_upload_tab(date_compact: str):
     """업로드 탭: processed_orders → Firebase."""
@@ -714,7 +953,7 @@ def render(get_date_str, get_date_compact):
 
     st.header("배송 관리")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["현황", "기사 배정", "실시간 추적", "업로드"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["현황", "기사 배정", "실시간 추적", "리포트", "업로드"])
 
     with tab1:
         _render_status_tab(date_compact)
@@ -726,4 +965,7 @@ def render(get_date_str, get_date_compact):
         _render_tracking_tab(date_compact)
 
     with tab4:
+        _render_report_tab(date_compact)
+
+    with tab5:
         _render_upload_tab(date_compact)
