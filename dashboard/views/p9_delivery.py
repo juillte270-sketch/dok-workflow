@@ -47,7 +47,7 @@ def _fmt_timestamp(ts) -> str:
 
 # Status display
 STATUS_LABEL = {
-    "pending": "⏳ 대기",
+    "pending": "🚛 배송출발",
     "in_transit": "🚛 배송출발",
     "arrived": "📦 입고중",
     "delivered": "✅ 배송완료",
@@ -55,10 +55,10 @@ STATUS_LABEL = {
 }
 
 STATUS_COLOR_MAP = {
-    "pending": "#EF4444",     # 빨강 — 배송 전
-    "in_transit": "#EF4444",  # 빨강 — 이동중 (아직 미완료)
+    "pending": "#3B82F6",     # 파랑 — 배송출발
+    "in_transit": "#3B82F6",  # 파랑 — 배송출발
     "arrived": "#F97316",     # 주황 — 입고중
-    "delivered": "#3B82F6",   # 파랑 — 배송완료
+    "delivered": "#10B981",   # 초록 — 배송완료
     "issue": "#DC2626",       # 진빨강 — 문제
 }
 
@@ -166,7 +166,7 @@ def _render_status_tab(date_compact: str):
     total = stats["total"]
     delivered = stats["delivered"]
     pct = int(delivered / total * 100) if total > 0 else 0
-    bar_color = "#4ADE80" if pct == 100 else "#818CF8"
+    bar_color = "#10B981" if pct == 100 else "#3B82F6"
     issue_html = (
         f'<span style="background:#7F1D1D;color:#FCA5A5;padding:2px 8px;border-radius:12px">'
         f'문제 <b>{stats["issue"]}</b></span>'
@@ -177,11 +177,11 @@ def _render_status_tab(date_compact: str):
         f'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'
         f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem">'
         f'전체 <b>{total}</b></span>'
-        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#60A5FA">'
-        f'배송출발 <b>{stats["in_transit"]}</b></span>'
-        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#FBBF24">'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#3B82F6">'
+        f'배송출발 <b>{stats["pending"] + stats["in_transit"]}</b></span>'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#F97316">'
         f'입고중 <b>{stats["arrived"]}</b></span>'
-        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#4ADE80">'
+        f'<span style="background:#1E293B;padding:4px 10px;border-radius:8px;font-size:0.85rem;color:#10B981">'
         f'배송완료 <b>{delivered}</b></span>'
         f'{issue_html}'
         f'</div>'
@@ -206,9 +206,9 @@ def _render_status_tab(date_compact: str):
             color_tags += f'<span style="color:#60A5FA;font-size:0.7rem">시장{blue_count}</span>'
 
         status = d.get("status", "pending")
-        s_color = {"pending": "#EF4444", "in_transit": "#EF4444", "arrived": "#F97316",
-                    "delivered": "#3B82F6", "issue": "#DC2626"}.get(status, "#94A3B8")
-        s_label = {"pending": "대기", "in_transit": "배송출발", "arrived": "입고중",
+        s_color = {"pending": "#3B82F6", "in_transit": "#3B82F6", "arrived": "#F97316",
+                    "delivered": "#10B981", "issue": "#DC2626"}.get(status, "#94A3B8")
+        s_label = {"pending": "배송출발", "in_transit": "배송출발", "arrived": "입고중",
                     "delivered": "배송완료", "issue": "문제"}.get(status, status)
         driver = d.get("driverName") or ""
         driver_html = f'<span style="color:#94A3B8;font-size:0.75rem">{driver}</span>' if driver else ""
