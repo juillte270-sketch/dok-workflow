@@ -238,55 +238,59 @@ def _render_status_tab(date_compact: str):
         items = d.get("items", [])
         store_name = d.get("storeName", "")
         with st.expander(f"#{d.get('order', 0)} {store_name} ({len(items)}개)"):
-            # 주소 + 출입정보 (각각 별도 줄)
+            # 전체를 하나의 HTML 블록으로 렌더링 (Streamlit 마진 겹침 방지)
+            html = '<div style="font-size:0.82rem;line-height:1.7">'
+
+            # 주소 + 출입정보
             addr = fb.get_store_address(store_name) if fb else None
             entry = fb.get_store_entry(store_name) if fb else None
             if addr:
-                st.markdown(f'<div style="font-size:0.78rem;color:#94A3B8;margin-bottom:2px;word-break:break-all">📍 {addr}</div>', unsafe_allow_html=True)
+                html += f'<div style="color:#94A3B8;font-size:0.78rem;word-break:break-all">📍 {addr}</div>'
             if entry:
-                st.markdown(f'<div style="font-size:0.78rem;color:#94A3B8;margin-bottom:4px">🔑 {entry}</div>', unsafe_allow_html=True)
+                html += f'<div style="color:#94A3B8;font-size:0.78rem">🔑 {entry}</div>'
 
-            # 배송 사진
-            photo_url = d.get("photoUrl")
-            if photo_url:
-                st.image(photo_url, caption="배송 사진", width=250)
-
-            # 타임라인 (세로 배치)
+            # 타임라인
             started = d.get("startedAt")
             arrived_at = d.get("arrivedAt")
-            completed = d.get("completedAt")
-            if started or arrived_at or completed:
-                tl_html = '<div style="font-size:0.78rem;color:#94A3B8;margin:4px 0;line-height:1.6">'
+            completed_at = d.get("completedAt")
+            if started or arrived_at or completed_at:
+                html += '<div style="margin:6px 0;font-size:0.78rem;color:#94A3B8">'
                 if started:
-                    tl_html += f'🚛 출발 <b>{_fmt_timestamp(started)}</b><br>'
+                    html += f'<div>🚛 출발 <b style="color:#CBD5E1">{_fmt_timestamp(started)}</b></div>'
                 if arrived_at:
-                    tl_html += f'📦 도착 <b>{_fmt_timestamp(arrived_at)}</b><br>'
-                if completed:
-                    tl_html += f'✅ 완료 <b>{_fmt_timestamp(completed)}</b>'
-                tl_html += '</div>'
-                st.markdown(tl_html, unsafe_allow_html=True)
+                    html += f'<div>📦 도착 <b style="color:#CBD5E1">{_fmt_timestamp(arrived_at)}</b></div>'
+                if completed_at:
+                    html += f'<div>✅ 완료 <b style="color:#CBD5E1">{_fmt_timestamp(completed_at)}</b></div>'
+                html += '</div>'
 
             # 품목 목록
-            items_html = ""
-            for item in items:
-                color_dot = ""
-                if item.get("color") == "red":
-                    color_dot = '<span style="color:#EF4444"> ●</span>'
-                elif item.get("color") == "blue":
-                    color_dot = '<span style="color:#3B82F6"> ●</span>'
-                items_html += (
-                    f'<div style="font-size:0.82rem;padding:1px 0">'
-                    f'{item.get("name", "")} '
-                    f'<span style="color:#64748B">{item.get("qty", "")}</span>'
-                    f'{color_dot}</div>'
-                )
-            if items_html:
-                st.markdown(items_html, unsafe_allow_html=True)
+            if items:
+                html += '<div style="margin-top:6px;border-top:1px solid #334155;padding-top:4px">'
+                for item in items:
+                    color_dot = ""
+                    if item.get("color") == "red":
+                        color_dot = ' <span style="color:#EF4444">●</span>'
+                    elif item.get("color") == "blue":
+                        color_dot = ' <span style="color:#3B82F6">●</span>'
+                    html += (
+                        f'<div>{item.get("name", "")} '
+                        f'<span style="color:#64748B">{item.get("qty", "")}</span>'
+                        f'{color_dot}</div>'
+                    )
+                html += '</div>'
 
             # 메모
             notes = d.get("notes")
             if notes:
-                st.markdown(f'<div style="font-size:0.78rem;color:#FBBF24;margin-top:4px">📝 {notes}</div>', unsafe_allow_html=True)
+                html += f'<div style="color:#FBBF24;margin-top:6px;font-size:0.78rem">📝 {notes}</div>'
+
+            html += '</div>'
+            st.markdown(html, unsafe_allow_html=True)
+
+            # 배송 사진 (이미지는 st.image 필요)
+            photo_url = d.get("photoUrl")
+            if photo_url:
+                st.image(photo_url, caption="배송 사진", width=250)
 
 
 # ─── Tab 2: 기사 배정 ────────────────────────────────────────
