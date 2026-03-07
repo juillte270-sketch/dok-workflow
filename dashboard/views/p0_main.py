@@ -162,6 +162,9 @@ def _render_inner(get_date_str, get_date_compact):
     except Exception:
         pass
 
+    # === 배송 현황 요약 ===
+    _render_delivery_summary(date_compact)
+
     # === Stage list — ONE HTML block ===
     rows_html = ""
     for s in STAGES:
@@ -232,9 +235,6 @@ def _render_inner(get_date_str, get_date_compact):
         f'{rows_html}</div>',
         unsafe_allow_html=True,
     )
-
-    # === 배송 현황 요약 ===
-    _render_delivery_summary(date_compact)
 
     # === Batch + utility (expander) ===
     with st.expander("일괄 실행 & 기타", expanded=False):
