@@ -24,6 +24,27 @@ INPUTS_DIR = PROJECT_ROOT / "data" / "inputs"
 
 KST = timezone(timedelta(hours=9))
 
+
+def _fmt_timestamp(ts) -> str:
+    """Firebase Timestamp → HH:MM 문자열."""
+    try:
+        if hasattr(ts, "timestamp"):
+            # Firestore Timestamp
+            dt = datetime.fromtimestamp(ts.timestamp(), tz=KST)
+        elif isinstance(ts, (int, float)):
+            dt = datetime.fromtimestamp(ts / 1000, tz=KST)
+        elif isinstance(ts, dict) and "_seconds" in ts:
+            dt = datetime.fromtimestamp(ts["_seconds"], tz=KST)
+        elif isinstance(ts, str):
+            dt = datetime.fromisoformat(ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=KST)
+        else:
+            return str(ts)
+        return dt.strftime("%H:%M")
+    except Exception:
+        return str(ts)
+
 # Status display
 STATUS_LABEL = {
     "pending": "⏳ 대기",
@@ -217,7 +238,39 @@ def _render_status_tab(date_compact: str):
     # 매장 상세 expander
     for d in deliveries:
         items = d.get("items", [])
-        with st.expander(f"#{d.get('order', 0)} {d.get('storeName', '')} ({len(items)}개)"):
+        store_name = d.get("storeName", "")
+        with st.expander(f"#{d.get('order', 0)} {store_name} ({len(items)}개)"):
+            # 주소 + 출입정보
+            addr = fb.get_store_address(store_name) if fb else None
+            entry = fb.get_store_entry(store_name) if fb else None
+            if addr or entry:
+                info_parts = []
+                if addr:
+                    info_parts.append(f"📍 {addr}")
+                if entry:
+                    info_parts.append(f"🔑 {entry}")
+                st.caption(" ｜ ".join(info_parts))
+
+            # 배송 사진
+            photo_url = d.get("photoUrl")
+            if photo_url:
+                st.image(photo_url, caption="배송 사진", width=300)
+
+            # 타임라인
+            started = d.get("startedAt")
+            arrived = d.get("arrivedAt")
+            completed = d.get("completedAt")
+            if started or arrived or completed:
+                timeline = []
+                if started:
+                    timeline.append(f"출발 {_fmt_timestamp(started)}")
+                if arrived:
+                    timeline.append(f"도착 {_fmt_timestamp(arrived)}")
+                if completed:
+                    timeline.append(f"완료 {_fmt_timestamp(completed)}")
+                st.caption(" → ".join(timeline))
+
+            # 품목 목록
             for item in items:
                 color_tag = ""
                 if item.get("color") == "red":
@@ -225,6 +278,11 @@ def _render_status_tab(date_compact: str):
                 elif item.get("color") == "blue":
                     color_tag = " 🔵"
                 st.text(f"  {item.get('name', '')}  {item.get('qty', '')}{color_tag}")
+
+            # 메모
+            notes = d.get("notes")
+            if notes:
+                st.info(f"📝 {notes}")
 
 
 # ─── Tab 2: 기사 배정 ────────────────────────────────────────
