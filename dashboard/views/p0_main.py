@@ -490,15 +490,17 @@ def _render_delivery_summary(date_compact):
         deliveries = None
 
     if not deliveries:
-        # 데이터 없으면 카드만 간략히
         st.markdown(
-            '<div style="border:1px solid #334155;border-radius:10px;padding:12px 14px;margin:8px 0">'
+            '<div style="border:1px solid #334155;border-radius:10px;padding:12px 14px;margin:8px 0;cursor:pointer">'
             '<div style="display:flex;align-items:center;justify-content:space-between">'
-            '<b style="font-size:0.92rem">🚛 배송</b>'
+            '<b style="font-size:0.92rem">🚛 배송현황</b>'
             '<span style="color:#64748B;font-size:0.8rem">데이터 없음</span>'
             '</div></div>',
             unsafe_allow_html=True,
         )
+        if st.button("배송 관리 →", key="go_delivery_empty", type="tertiary"):
+            st.session_state["nav_page"] = "12. 배송 관리"
+            st.rerun()
         return
 
     stats = fb.compute_delivery_stats(deliveries)
@@ -510,14 +512,13 @@ def _render_delivery_summary(date_compact):
     issue = stats["issue"]
     pct = int(done / total * 100) if total else 0
 
-    # 진행률 바 색상
     bar_color = "#4ADE80" if pct == 100 else "#818CF8"
     issue_html = f'<span style="color:#F87171;margin-left:6px">문제 {issue}</span>' if issue else ""
 
     st.markdown(
         f'<div style="border:1px solid #334155;border-radius:10px;padding:12px 14px;margin:8px 0">'
         f'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-        f'<b style="font-size:0.92rem">🚛 배송</b>'
+        f'<b style="font-size:0.92rem">🚛 배송현황</b>'
         f'<span style="font-size:0.78rem;color:#94A3B8">'
         f'완료 <b style="color:#4ADE80">{done}</b> · '
         f'이동 <b style="color:#60A5FA">{transit}</b> · '
@@ -533,3 +534,6 @@ def _render_delivery_summary(date_compact):
         f'</div>',
         unsafe_allow_html=True,
     )
+    if st.button("배송 관리 →", key="go_delivery", type="tertiary"):
+        st.session_state["nav_page"] = "12. 배송 관리"
+        st.rerun()
