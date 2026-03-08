@@ -53,10 +53,8 @@ def ensure_browser():
 
 def _install_chromium():
     """Chromium 브라우저 설치 (with-deps 옵션으로 시스템 의존성도 함께)."""
+    # 시스템 의존성은 packages.txt로 별도 설치 (--with-deps는 sudo 필요하므로 사용 안 함)
     cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
-    if _is_streamlit_cloud():
-        # Streamlit Cloud: 시스템 의존성도 함께 설치 시도
-        cmd = [sys.executable, "-m", "playwright", "install", "--with-deps", "chromium"]
 
     try:
         result = subprocess.run(
