@@ -349,6 +349,9 @@ def render(get_date_str, get_date_compact):
             key="btn_batch_receipt",
             disabled=not master_ok or not images,
         ):
+            # Drive 동기화: 카카오톡 → G드라이브 카톡 영수증 폴더
+            _sync_kakao_to_drive(receipt_dir, since_minutes)
+
             state_dir = os.path.join(PROJECT_ROOT, 'dashboard', 'state')
             args = [
                 "--master", settings["master_file"],
@@ -382,6 +385,26 @@ def render(get_date_str, get_date_compact):
     st.divider()
     with st.expander("개별 영수증 입력 (URL/텍스트)"):
         _render_manual_input(settings, date_str, master_ok)
+
+
+def _sync_kakao_to_drive(receipt_dir, since_minutes):
+    """카카오톡 영수증 → Google Drive 카톡 영수증 폴더 동기화 (로컬 모드)."""
+    drive_dir = Path(r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단가_자료\카톡 영수증")
+    if not drive_dir.parent.exists():
+        return  # G: 드라이브 미연결
+
+    import shutil
+    drive_dir.mkdir(parents=True, exist_ok=True)
+    images = _list_recent_images(receipt_dir, since_minutes)
+    copied = 0
+    for img in images:
+        dst = drive_dir / img["name"]
+        if dst.exists() and dst.stat().st_size == os.path.getsize(img["path"]):
+            continue
+        shutil.copy2(img["path"], dst)
+        copied += 1
+    if copied:
+        st.toast(f"Drive 동기화: {copied}개 영수증 업로드")
 
 
 def _get_receipt_folder_id():
