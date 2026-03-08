@@ -35,11 +35,15 @@ def render(get_date_str, get_date_compact):
 
         st.info("오후 10시 (동원 마감 후) 실행 권장")
 
+        cloud_env = is_cloud()
+        if cloud_env:
+            st.warning("🖥️ 로컬 전용 — HELO는 내부망 제한으로 Cloud에서 접속 불가")
+
         if st.button(
-            "HELO 스크래핑 실행",
+            "HELO 스크래핑 실행" + (" (로컬 전용)" if cloud_env else ""),
             type="primary",
             key="btn_helo",
-            disabled=not master_ok,
+            disabled=not master_ok or cloud_env,
         ):
             # Step 1: HELO scraping
             with st.spinner("HELO 스크래핑 중... (브라우저 자동화)"):
