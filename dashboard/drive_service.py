@@ -490,7 +490,7 @@ def _download_progress_api(date_compact: str) -> dict:
 
 
 def sync_progress_to_drive(date_compact: str, data: dict):
-    """Save progress to Drive. Local: file system, Cloud: API."""
+    """Save progress. Local: file system, Cloud: Firestore."""
     try:
         if not is_cloud():
             PROGRESS_LOCAL_DRIVE.mkdir(parents=True, exist_ok=True)
@@ -498,14 +498,21 @@ def sync_progress_to_drive(date_compact: str, data: dict):
             with open(p, "w", encoding="utf-8") as f:
                 _json.dump(data, f, ensure_ascii=False, indent=2)
         else:
-            _upload_progress_api(date_compact, data)
-            _progress_cache[date_compact] = (data, _time.time())
+            # Cloud: use Firestore (SA has no Drive storage quota for create)
+            try:
+                from dashboard.firebase_service import get_firestore_client
+                db = get_firestore_client()
+                db.collection("dashboardProgress").document(date_compact).set(data)
+                _progress_cache[date_compact] = (data, _time.time())
+            except Exception as e:
+                logger.warning(f"Firestore progress sync failed: {e}")
+                _progress_cache[date_compact] = (data, _time.time())
     except Exception as e:
-        logger.warning(f"Progress sync to Drive failed: {e}")
+        logger.warning(f"Progress sync failed: {e}")
 
 
 def load_progress_from_drive(date_compact: str) -> dict:
-    """Load progress from Drive. Local: file system, Cloud: API with cache."""
+    """Load progress. Local: file system, Cloud: Firestore with cache."""
     try:
         if not is_cloud():
             p = PROGRESS_LOCAL_DRIVE / f"progress_{date_compact}.json"
@@ -520,11 +527,18 @@ def load_progress_from_drive(date_compact: str) -> dict:
                 if now - cached_ts < _PROGRESS_CACHE_TTL:
                     return cached_data
 
-            data = _download_progress_api(date_compact)
-            _progress_cache[date_compact] = (data, now)
+            # Cloud: use Firestore
+            try:
+                from dashboard.firebase_service import get_firestore_client
+                db = get_firestore_client()
+                doc = db.collection("dashboardProgress").document(date_compact).get()
+                data = doc.to_dict() if doc.exists else {}
+            except Exception:
+                data = {}
+            _progress_cache[date_compact] = (data, _time.time())
             return data
     except Exception as e:
-        logger.warning(f"Progress load from Drive failed: {e}")
+        logger.warning(f"Progress load failed: {e}")
         return {}
 
 
