@@ -17,7 +17,7 @@ CLOUD_DISABLED_STAGES = set()
 # Cloud에서 제한 있는 스테이지 안내 (실행은 가능하지만 로컬 필요)
 CLOUD_LOCAL_HINTS = {
     "stage4_helo": "로컬 전용",
-    "stage_receipt": "로컬 1차 실행 필요",
+    "stage_receipt": "로컬1차 실행 or 사진직접업로드",
 }
 
 
@@ -139,9 +139,31 @@ def _render_inner(get_date_str, get_date_compact):
     # === Handle stage execution triggered by HTML link click ===
     params = st.query_params
     run_target = params.get("run")
+    confirm_target = params.get("confirm")
+
     if run_target and run_target in STAGE_MAP:
-        st.query_params.clear()
-        _run_single_stage(run_target, date_str, settings)
+        # 완료된 스테이지 재실행 시 확인 절차
+        current_status = progress.get(run_target, {}).get("status", "pending")
+        if current_status == "completed":
+            st.query_params.clear()
+            st.query_params["confirm"] = run_target
+            st.rerun()
+        else:
+            st.query_params.clear()
+            _run_single_stage(run_target, date_str, settings)
+
+    if confirm_target and confirm_target in STAGE_MAP:
+        stage_name = STAGE_MAP[confirm_target]["name"]
+        st.warning(f"**{stage_name}** 은(는) 이미 완료된 작업입니다. 재실행하시겠습니까?")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("재실행", type="primary", key="btn_confirm_rerun"):
+                st.query_params.clear()
+                _run_single_stage(confirm_target, date_str, settings)
+        with col_no:
+            if st.button("취소", key="btn_cancel_rerun"):
+                st.query_params.clear()
+                st.rerun()
 
     # === Header: metrics + Drive status (ONE HTML block) ===
     completed = count_completed(date_str)
