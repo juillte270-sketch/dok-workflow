@@ -307,6 +307,12 @@ def save_progress(progress: dict, date_str: str = None):
 def mark_stage(stage_id: str, status: str = "completed", extra: dict = None, date_str: str = None):
     """Mark a stage as completed/failed/running with timestamp."""
     prog = load_progress(date_str)
+
+    # running으로 변경 시 이전 완료 정보 보존 (중단 시 복원용)
+    prev = prog.get(stage_id, {})
+    if status == "running" and isinstance(prev, dict) and prev.get("status") == "completed":
+        prog[f"_prev_{stage_id}"] = prev.copy()
+
     entry = {
         "status": status,
         "timestamp": now_kst().isoformat(),

@@ -141,14 +141,26 @@ def _render_inner(get_date_str, get_date_compact):
     cancel_target = params.get("cancel")
     if cancel_target and cancel_target in STAGE_MAP:
         st.query_params.clear()
-        mark_stage(cancel_target, "failed", {"error": "사용자 중단"}, date_str=date_str)
-        # Kill running process if lock exists
+        # 이전 완료 정보가 있으면 복원, 없으면 failed 처리
+        prev_key = f"_prev_{cancel_target}"
+        prev_info = progress.get(prev_key)
+        if prev_info and isinstance(prev_info, dict) and prev_info.get("status") == "completed":
+            # 이전 완료 상태 복원
+            prog = load_progress(date_str)
+            prog[cancel_target] = prev_info
+            prog.pop(prev_key, None)
+            save_progress(prog, date_str)
+            append_log(f"사용자 중단 → 이전 완료 상태 복원: {STAGE_MAP[cancel_target]['name']}")
+            st.toast("중단 — 이전 완료 상태로 복원되었습니다.")
+        else:
+            mark_stage(cancel_target, "failed", {"error": "사용자 중단"}, date_str=date_str)
+            append_log(f"사용자 중단: {STAGE_MAP[cancel_target]['name']}")
+            st.toast("중단 처리되었습니다.")
+        # 실행 잠금 해제
         from dashboard.utils import release_lock, get_lock_info as _get_lock
         lock = _get_lock()
         if lock:
             release_lock()
-        append_log(f"사용자 중단: {STAGE_MAP[cancel_target]['name']}")
-        st.toast("중단 처리되었습니다.")
         st.rerun()
 
     # === Handle stage execution triggered by HTML link click ===
