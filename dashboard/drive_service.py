@@ -97,10 +97,16 @@ def get_user_drive_service():
             token_uri="https://oauth2.googleapis.com/token",
         )
 
+        # Explicitly refresh to validate token before building service
+        from google.auth.transport.requests import Request
+        creds.refresh(Request())
+        logger.info(f"OAuth token refreshed successfully for: {creds.client_id[:20]}...")
+
         _user_drive_service = build("drive", "v3", credentials=creds)
         logger.info("Drive API service initialized (OAuth user)")
         return _user_drive_service
     except Exception as e:
+        _user_drive_service = None  # Reset so next attempt retries
         logger.warning(f"OAuth Drive service not available: {e}")
         return None
 
