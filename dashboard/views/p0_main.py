@@ -17,7 +17,7 @@ CLOUD_DISABLED_STAGES = set()
 # Cloud에서 제한 있는 스테이지 안내 (실행은 가능하지만 로컬 필요)
 CLOUD_LOCAL_HINTS = {
     "stage4_helo": "로컬 전용",
-    "stage_receipt": "로컬1차 실행 or 사진직접업로드",
+    "stage_receipt": "로컬실행 or 영수증업로드",
 }
 
 
