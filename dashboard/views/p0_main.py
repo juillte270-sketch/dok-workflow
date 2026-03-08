@@ -136,8 +136,22 @@ def _render_inner(get_date_str, get_date_compact):
     from dashboard.utils import _recover_stale_running
     _recover_stale_running(progress, date_str)
 
-    # === Handle stage execution triggered by HTML link click ===
+    # === Handle cancel request ===
     params = st.query_params
+    cancel_target = params.get("cancel")
+    if cancel_target and cancel_target in STAGE_MAP:
+        st.query_params.clear()
+        mark_stage(cancel_target, "failed", {"error": "사용자 중단"}, date_str=date_str)
+        # Kill running process if lock exists
+        from dashboard.utils import release_lock, get_lock_info as _get_lock
+        lock = _get_lock()
+        if lock:
+            release_lock()
+        append_log(f"사용자 중단: {STAGE_MAP[cancel_target]['name']}")
+        st.toast("중단 처리되었습니다.")
+        st.rerun()
+
+    # === Handle stage execution triggered by HTML link click ===
     run_target = params.get("run")
     confirm_target = params.get("confirm")
 
@@ -233,7 +247,12 @@ def _render_inner(get_date_str, get_date_compact):
             bg = "background:rgba(248,113,113,0.04);"
         elif status == "running":
             dot = "background:#FBBF24;animation:pulse 1.5s ease-in-out infinite"
-            right_html = '<span style="color:#FBBF24;font-size:0.8rem">실행중</span>'
+            right_html = (
+                f'<span style="color:#FBBF24;font-size:0.8rem">실행중</span>'
+                f'&nbsp;<a href="?cancel={sid}" target="_self" '
+                f'style="color:#F87171;font-size:0.7rem;text-decoration:none;'
+                f'padding:1px 5px;border:1px solid #F87171;border-radius:3px">중단</a>'
+            )
             bg = "background:rgba(251,191,36,0.04);"
         elif s.get("dev"):
             dot = "background:#475569"
