@@ -181,56 +181,29 @@ def load_master_override_on_start():
 
 
 def _save_master_config(file_id: str, file_name: str):
-    """Save master file selection to Drive config."""
-    folder_id = _get_progress_folder_id()
-    filename = "master_config.json"
-    service = get_drive_service()
-
-    query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
-    results = service.files().list(q=query, fields="files(id)", pageSize=1).execute()
-    existing = results.get("files", [])
-
-    data = {"master_file_id": file_id, "master_file_name": file_name}
-    tmp_path = os.path.join(tempfile.gettempdir(), filename)
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        import json
-        json.dump(data, f, ensure_ascii=False)
-
-    from googleapiclient.http import MediaFileUpload
-    media = MediaFileUpload(tmp_path, mimetype="application/json")
-
-    if existing:
-        service.files().update(fileId=existing[0]["id"], media_body=media).execute()
-    else:
-        file_meta = {"name": filename, "parents": [folder_id]}
-        service.files().create(body=file_meta, media_body=media, fields="id").execute()
+    """Save master file selection to Firestore (SA has no Drive storage quota)."""
+    try:
+        from dashboard.firebase_service import get_firestore_client
+        db = get_firestore_client()
+        db.collection("dashboardConfig").document("masterFile").set({
+            "master_file_id": file_id,
+            "master_file_name": file_name,
+        })
+    except Exception as e:
+        logger.warning(f"Firestore config save failed: {e}")
 
 
 def _load_master_config() -> dict:
-    """Load master file selection from Drive config."""
+    """Load master file selection from Firestore."""
     try:
-        folder_id = _get_progress_folder_id()
-        filename = "master_config.json"
-        service = get_drive_service()
-
-        query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
-        results = service.files().list(q=query, fields="files(id)", pageSize=1).execute()
-        files = results.get("files", [])
-
-        if not files:
-            return {}
-
-        from googleapiclient.http import MediaIoBaseDownload
-        import io, json
-
-        request = service.files().get_media(fileId=files[0]["id"])
-        buffer = io.BytesIO()
-        downloader = MediaIoBaseDownload(buffer, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
-        buffer.seek(0)
-        return json.loads(buffer.read().decode("utf-8"))
+        from dashboard.firebase_service import get_firestore_client
+        db = get_firestore_client()
+        doc = db.collection("dashboardConfig").document("masterFile").get()
+        if doc.exists:
+            data = doc.to_dict()
+            if data.get("master_file_id"):
+                return data
+        return {}
     except Exception:
         return {}
 
