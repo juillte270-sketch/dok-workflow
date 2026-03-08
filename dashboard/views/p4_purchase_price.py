@@ -377,30 +377,38 @@ def _show_order_prices(master_path, date_str):
         target = dt.strptime(date_str, "%Y-%m-%d")
 
         rows_data = []
+        # 발주시트 컬럼: A(0)=매장, D(3)=날짜, E(4)=품목, F(5)=공급업체,
+        #               G(6)=단위, H(7)=수량, I(8)=매입단가, K(10)=판매단가
         for row in ws.iter_rows(min_row=2, max_col=14, values_only=True):
-            cell_date = row[1]
+            cell_date = row[3]  # D열: 날짜
             if cell_date is None:
                 continue
 
             match = False
             if isinstance(cell_date, dt):
-                match = cell_date.month == target.month and cell_date.day == target.day
+                match = cell_date.month == target.month and cell_date.day == target.day and cell_date.year == target.year
+            elif hasattr(cell_date, 'strftime'):
+                try:
+                    match = cell_date.strftime('%Y-%m-%d') == target.strftime('%Y-%m-%d')
+                except Exception:
+                    pass
             elif isinstance(cell_date, str):
                 if f"{target.month}월" in str(cell_date) and f"{target.day}일" in str(cell_date):
                     match = True
 
             if match:
-                purchase = row[8] if row[8] else 0
-                selling = row[10] if row[10] else 0
+                purchase = row[8] if row[8] else 0   # I열: 매입단가
+                selling = row[10] if row[10] else 0   # K열: 판매단가
                 margin = 0
                 if selling and purchase and selling > 0:
                     margin = ((selling - purchase) / selling) * 100
 
                 rows_data.append({
-                    "매장": str(row[0] or ""),
-                    "품목": str(row[2] or ""),
-                    "수량": row[3] or "",
-                    "단위": str(row[4] or ""),
+                    "매장": str(row[0] or ""),        # A열
+                    "품목": str(row[4] or ""),         # E열
+                    "공급업체": str(row[5] or ""),     # F열
+                    "단위": str(row[6] or ""),         # G열
+                    "수량": row[7] or "",              # H열
                     "매입가": int(purchase) if purchase else 0,
                     "판매가": int(selling) if selling else 0,
                     "마진(%)": round(margin, 1),
@@ -422,7 +430,11 @@ def _show_order_prices(master_path, date_str):
                         return "color: #4ADE80; font-weight: bold"
                 return ""
 
-            styled = df.style.map(color_margin, subset=["마진(%)"])
+            # 표시 컬럼 순서 정리
+            display_cols = ["매장", "품목", "공급업체", "단위", "수량", "매입가", "판매가", "마진(%)"]
+            display_df = df[[c for c in display_cols if c in df.columns]]
+
+            styled = display_df.style.map(color_margin, subset=["마진(%)"])
             st.dataframe(styled, use_container_width=True, height=400)
 
             # Summary metrics
