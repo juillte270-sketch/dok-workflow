@@ -81,6 +81,7 @@ def get_user_drive_service():
         return _user_drive_service
 
     try:
+        import requests as req
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
 
@@ -89,24 +90,34 @@ def get_user_drive_service():
             return None
 
         oauth = dict(secrets["google_oauth"])
+
+        # Manually refresh token via HTTP POST (bypasses library issues)
+        resp = req.post("https://oauth2.googleapis.com/token", data={
+            "client_id": oauth["client_id"],
+            "client_secret": oauth["client_secret"],
+            "refresh_token": oauth["refresh_token"],
+            "grant_type": "refresh_token",
+        })
+        token_data = resp.json()
+
+        if "access_token" not in token_data:
+            logger.warning(f"OAuth token refresh failed: {token_data}")
+            return None
+
         creds = Credentials(
-            token=None,
+            token=token_data["access_token"],
             refresh_token=oauth["refresh_token"],
             client_id=oauth["client_id"],
             client_secret=oauth["client_secret"],
             token_uri="https://oauth2.googleapis.com/token",
         )
-
-        # Explicitly refresh to validate token before building service
-        from google.auth.transport.requests import Request
-        creds.refresh(Request())
-        logger.info(f"OAuth token refreshed successfully for: {creds.client_id[:20]}...")
+        logger.info(f"OAuth token refreshed manually, expires_in={token_data.get('expires_in')}")
 
         _user_drive_service = build("drive", "v3", credentials=creds)
         logger.info("Drive API service initialized (OAuth user)")
         return _user_drive_service
     except Exception as e:
-        _user_drive_service = None  # Reset so next attempt retries
+        _user_drive_service = None
         logger.warning(f"OAuth Drive service not available: {e}")
         return None
 
