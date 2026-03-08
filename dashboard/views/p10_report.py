@@ -115,12 +115,17 @@ def _render_cloud(date_str):
 
 def _run_cloud_report(target_date, date_str, report_folder_id,
                       month_name, target_fname, dry_run):
-    """Cloud 보고서 생성 실행."""
+    """Cloud 보고서 생성 실행.
+
+    Service Account는 자체 저장 용량이 없으므로 files().create() 불가.
+    대신 files().copy()로 Drive 내에서 복사 → 다운로드 → 날짜 교체 → update로 덮어쓰기.
+    copy()는 원본 소유자의 용량을 사용하므로 quota 문제 없음.
+    """
     import time
     from dashboard.drive_service import (
+        get_drive_service,
         find_or_create_subfolder, search_file_in_folder,
-        download_file_by_id, upload_file_to_folder,
-        list_folder,
+        download_file_by_id,
     )
 
     exec_dir = os.path.join(PROJECT_ROOT, 'execution')
@@ -155,7 +160,6 @@ def _run_cloud_report(target_date, date_str, report_folder_id,
             for i in range(1, 15):
                 check_date = target_date - timedelta(days=i)
                 check_month = month_folder_name(check_date)
-                check_fname = report_filename(check_date)
 
                 # Search in same or different month folder
                 if check_month == month_name:
@@ -184,11 +188,6 @@ def _run_cloud_report(target_date, date_str, report_folder_id,
 
             st.caption(f"이전 보고서: {prev_file['name']}")
 
-        with st.spinner("이전 보고서 다운로드 중..."):
-            # 4. Download previous report
-            tmp_prev = os.path.join(tempfile.gettempdir(), prev_file["name"])
-            download_file_by_id(prev_file["id"], tmp_prev)
-
         if dry_run:
             elapsed = time.time() - start_t
             mark_stage("stage_report", "pending", date_str=date_str)
@@ -198,19 +197,40 @@ def _run_cloud_report(target_date, date_str, report_folder_id,
                        f"{target_date.month}/{target_date.day}({get_day_kr(target_date)})")
             return
 
-        with st.spinner("보고서 생성 중 (날짜 교체)..."):
-            # 5. Generate new report
+        with st.spinner("Drive에서 보고서 복사 중..."):
+            # 4. Copy previous report in Drive (avoids SA storage quota issue)
+            service = get_drive_service()
+            copy_metadata = {
+                "name": target_fname,
+                "parents": [month_folder_id],
+            }
+            copied = service.files().copy(
+                fileId=prev_file["id"],
+                body=copy_metadata,
+                fields="id",
+            ).execute()
+            new_file_id = copied.get("id")
+
+        with st.spinner("보고서 날짜 교체 중..."):
+            # 5. Download the copied file
             tmp_new = os.path.join(tempfile.gettempdir(), target_fname)
+            download_file_by_id(new_file_id, tmp_new)
+
+            # 6. Replace dates locally
             generate_report(
                 target_date,
                 dry_run=False,
-                prev_path=tmp_prev,
+                prev_path=tmp_new,
                 output_path=tmp_new,
             )
 
-        with st.spinner("Drive 업로드 중..."):
-            # 6. Upload to Drive
-            new_file_id = upload_file_to_folder(tmp_new, month_folder_id, target_fname)
+            # 7. Upload modified content back (update, not create)
+            from googleapiclient.http import MediaFileUpload
+            media = MediaFileUpload(tmp_new, resumable=True)
+            service.files().update(
+                fileId=new_file_id,
+                media_body=media,
+            ).execute()
 
         elapsed = time.time() - start_t
         mark_stage("stage_report", "completed", {"elapsed": elapsed}, date_str=date_str)
@@ -229,11 +249,10 @@ def _run_cloud_report(target_date, date_str, report_folder_id,
             )
 
         # Cleanup
-        for tmp in [tmp_prev, tmp_new]:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
+        try:
+            os.unlink(tmp_new)
+        except OSError:
+            pass
 
     except Exception as e:
         elapsed = time.time() - start_t
