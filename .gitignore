@@ -55,6 +55,7 @@ error*.log
 /*.txt
 !requirements.txt
 !README.txt
+!packages.txt
 /*.html
 /search_bundle.js
 
