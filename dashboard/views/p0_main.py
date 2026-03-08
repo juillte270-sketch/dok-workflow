@@ -14,6 +14,12 @@ from dashboard.drive_service import is_cloud
 # All stages now use Playwright (headless) — Cloud-compatible
 CLOUD_DISABLED_STAGES = set()
 
+# Cloud에서 제한 있는 스테이지 안내 (실행은 가능하지만 로컬 필요)
+CLOUD_LOCAL_HINTS = {
+    "stage4_helo": "로컬 전용",
+    "stage_receipt": "로컬 1차 실행 필요",
+}
+
 
 def _render_master_selector(settings):
     """Compact master file selector at top of main dashboard."""
@@ -166,6 +172,7 @@ def _render_inner(get_date_str, get_date_compact):
     _render_delivery_summary(date_compact)
 
     # === Stage list — ONE HTML block ===
+    cloud_mode = is_cloud()
     rows_html = ""
     for s in STAGES:
         sid = s["id"]
@@ -175,6 +182,14 @@ def _render_inner(get_date_str, get_date_compact):
         sub_html = f' <span style="color:#64748B;font-size:0.7rem">{sub}</span>' if sub else ""
         ts = info.get("timestamp", "")
         ts_short = ts[11:16] if len(ts) > 16 else ""
+
+        # Cloud 환경에서 로컬 필요 힌트
+        local_hint = ""
+        if cloud_mode and sid in CLOUD_LOCAL_HINTS:
+            hint_text = CLOUD_LOCAL_HINTS[sid]
+            local_hint = (f' <span style="color:#FBBF24;font-size:0.6rem;'
+                          f'border:1px solid #FBBF24;border-radius:3px;padding:0 4px;'
+                          f'vertical-align:middle">🖥 {hint_text}</span>')
 
         # Status dot + right-side action
         if status == "completed":
@@ -217,7 +232,7 @@ def _render_inner(get_date_str, get_date_compact):
             f'<span style="display:inline-flex;align-items:center;justify-content:center;'
             f'width:22px;height:22px;border-radius:50%;background:#334155;'
             f'color:#CBD5E1;font-size:0.65rem;font-weight:600;flex-shrink:0">{s["icon"]}</span>'
-            f'<span style="flex:1;font-size:0.88rem;line-height:1.3"><b>{s["name"]}</b>{sub_html}</span>'
+            f'<span style="flex:1;font-size:0.88rem;line-height:1.3"><b>{s["name"]}</b>{local_hint}{sub_html}</span>'
             f'<span style="flex-shrink:0">{right_html}</span>'
             f'</div>'
         )

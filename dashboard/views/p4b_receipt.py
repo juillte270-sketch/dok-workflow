@@ -677,6 +677,8 @@ def _render_cloud_mode(date_str, settings):
 
 def _render_drive_tab(master_path, date_str, from_drive):
     """Drive 카톡 영수증 폴더에서 이미지 목록 → 일괄 처리."""
+    st.caption("로컬에서 먼저 영수증 처리를 실행하면 카카오톡 파일이 Drive에 자동 동기화됩니다. "
+               "또는 '직접 업로드' 탭에서 이미지를 수동으로 올릴 수 있습니다.")
     import pandas as pd
 
     col_list, col_action = st.columns([3, 1])
