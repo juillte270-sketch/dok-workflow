@@ -10,8 +10,9 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Singleton Drive service instance
-_drive_service = None
+# Singleton Drive service instances
+_drive_service = None      # Service Account (read/update)
+_user_drive_service = None  # OAuth user (create/copy — SA has no storage quota)
 
 
 def is_cloud() -> bool:
@@ -61,6 +62,47 @@ def get_drive_service():
     except Exception as e:
         logger.error(f"Failed to initialize Drive service: {e}")
         raise
+
+
+def get_user_drive_service():
+    """Get Drive service using OAuth user credentials (for file creation).
+
+    Service Accounts have no storage quota → files().create/copy() fails.
+    OAuth user credentials are needed for operations that create new files.
+
+    Requires secrets.toml:
+        [google_oauth]
+        client_id = "..."
+        client_secret = "..."
+        refresh_token = "..."
+    """
+    global _user_drive_service
+    if _user_drive_service is not None:
+        return _user_drive_service
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        secrets = _get_st_secrets()
+        if secrets is None or "google_oauth" not in secrets:
+            return None
+
+        oauth = dict(secrets["google_oauth"])
+        creds = Credentials(
+            token=None,
+            refresh_token=oauth["refresh_token"],
+            client_id=oauth["client_id"],
+            client_secret=oauth["client_secret"],
+            token_uri="https://oauth2.googleapis.com/token",
+        )
+
+        _user_drive_service = build("drive", "v3", credentials=creds)
+        logger.info("Drive API service initialized (OAuth user)")
+        return _user_drive_service
+    except Exception as e:
+        logger.warning(f"OAuth Drive service not available: {e}")
+        return None
 
 
 def get_drive_file_ids() -> dict:
@@ -128,8 +170,12 @@ def upload_master_file(local_path: str) -> str:
 
 
 def upload_file_to_folder(local_path: str, folder_id: str, filename: Optional[str] = None) -> str:
-    """Upload a file to a specific Drive folder. Returns the new file ID."""
-    service = get_drive_service()
+    """Upload a file to a specific Drive folder. Returns the new file ID.
+
+    Uses OAuth user credentials if available (SA has no storage quota for create).
+    """
+    # Prefer OAuth user service for file creation
+    service = get_user_drive_service() or get_drive_service()
 
     if filename is None:
         filename = os.path.basename(local_path)

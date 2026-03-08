@@ -75,7 +75,7 @@ def _render_cloud(date_str):
     from dashboard.drive_service import (
         get_drive_file_ids, find_or_create_subfolder,
         search_file_in_folder, download_file_by_id,
-        upload_file_to_folder,
+        upload_file_to_folder, get_user_drive_service,
     )
 
     # Check secrets
@@ -83,6 +83,14 @@ def _render_cloud(date_str):
     report_folder_id = file_ids.get("report_folder_id")
     if not report_folder_id:
         st.error("secrets.toml에 `[drive] report_folder_id`가 설정되지 않았습니다.")
+        return
+
+    if get_user_drive_service() is None:
+        st.warning(
+            "secrets.toml에 `[google_oauth]` 설정 필요 — "
+            "Service Account는 파일 생성 불가 (저장 용량 없음). "
+            "token.json에서 client_id, client_secret, refresh_token을 복사하세요."
+        )
         return
 
     target_date = datetime.strptime(date_str, "%Y-%m-%d")
@@ -197,40 +205,25 @@ def _run_cloud_report(target_date, date_str, report_folder_id,
                        f"{target_date.month}/{target_date.day}({get_day_kr(target_date)})")
             return
 
-        with st.spinner("Drive에서 보고서 복사 중..."):
-            # 4. Copy previous report in Drive (avoids SA storage quota issue)
-            service = get_drive_service()
-            copy_metadata = {
-                "name": target_fname,
-                "parents": [month_folder_id],
-            }
-            copied = service.files().copy(
-                fileId=prev_file["id"],
-                body=copy_metadata,
-                fields="id",
-            ).execute()
-            new_file_id = copied.get("id")
+        with st.spinner("이전 보고서 다운로드 중..."):
+            # 4. Download previous report
+            tmp_prev = os.path.join(tempfile.gettempdir(), prev_file["name"])
+            download_file_by_id(prev_file["id"], tmp_prev)
 
         with st.spinner("보고서 날짜 교체 중..."):
-            # 5. Download the copied file
+            # 5. Generate new report (date replacement)
             tmp_new = os.path.join(tempfile.gettempdir(), target_fname)
-            download_file_by_id(new_file_id, tmp_new)
-
-            # 6. Replace dates locally
             generate_report(
                 target_date,
                 dry_run=False,
-                prev_path=tmp_new,
+                prev_path=tmp_prev,
                 output_path=tmp_new,
             )
 
-            # 7. Upload modified content back (update, not create)
-            from googleapiclient.http import MediaFileUpload
-            media = MediaFileUpload(tmp_new, resumable=True)
-            service.files().update(
-                fileId=new_file_id,
-                media_body=media,
-            ).execute()
+        with st.spinner("Drive 업로드 중..."):
+            # 6. Upload using OAuth user credentials (SA has no storage quota)
+            from dashboard.drive_service import get_user_drive_service, upload_file_to_folder
+            new_file_id = upload_file_to_folder(tmp_new, month_folder_id, target_fname)
 
         elapsed = time.time() - start_t
         mark_stage("stage_report", "completed", {"elapsed": elapsed}, date_str=date_str)
@@ -249,10 +242,11 @@ def _run_cloud_report(target_date, date_str, report_folder_id,
             )
 
         # Cleanup
-        try:
-            os.unlink(tmp_new)
-        except OSError:
-            pass
+        for tmp in [tmp_prev, tmp_new]:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
     except Exception as e:
         elapsed = time.time() - start_t
