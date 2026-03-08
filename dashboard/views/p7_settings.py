@@ -7,7 +7,7 @@ from dashboard.utils import (
     PROJECT_ROOT, STATE_DIR, LOGS_DIR, HISTORY_DIR, BACKUP_DIR,
     save_progress, DEFAULT_SETTINGS, backup_master_file, list_backups,
 )
-from dashboard.drive_service import is_cloud, check_drive_connection
+from dashboard.drive_service import is_cloud, check_drive_connection, load_master_override_on_start
 
 
 def render():
@@ -34,7 +34,7 @@ def _render_paths():
     settings = load_settings()
     cloud_mode = is_cloud()
 
-    # --- Cloud mode: Drive connection status ---
+    # --- Cloud mode: Drive connection status + file selector ---
     if cloud_mode:
         st.markdown("##### Google Drive 연결 (Cloud 모드)")
         ok, msg = check_drive_connection()
@@ -45,16 +45,87 @@ def _render_paths():
             st.caption("Streamlit Secrets에 gcp_service_account 및 drive 섹션을 설정해주세요.")
 
         st.divider()
-        st.markdown("##### Drive 파일 ID 설정")
-        st.caption("Streamlit Cloud > Settings > Secrets에서 관리됩니다.")
+        st.markdown("##### 마스터 파일 선택")
 
+        # Show current active file
+        from dashboard.drive_service import (
+            get_drive_file_ids, list_xlsx_in_master_folder,
+            get_effective_master_file_id, set_master_file_override,
+            clear_master_file_override,
+        )
+
+        current_id = get_effective_master_file_id()
+        override_name = st.session_state.get("master_file_name_override", "")
+        default_id = get_drive_file_ids().get("master_file_id", "")
+        is_override = current_id != default_id
+
+        if is_override and override_name:
+            st.info(f"현재 활성: **{override_name}** (변경됨)")
+        elif is_override:
+            st.info(f"현재 활성: `{current_id}` (변경됨)")
+
+        # List xlsx files in the same folder
         try:
-            from dashboard.drive_service import get_drive_file_ids
+            xlsx_files = list_xlsx_in_master_folder()
+        except Exception as e:
+            xlsx_files = []
+            st.warning(f"폴더 조회 실패: {e}")
+
+        if xlsx_files:
+            # Build options
+            options = []
+            for f in xlsx_files:
+                size_mb = int(f.get("size", 0)) / (1024 * 1024)
+                modified = f.get("modifiedTime", "")[:10]
+                label = f"{f['name']}  ({size_mb:.1f}MB, {modified})"
+                options.append((f["id"], f["name"], label))
+
+            # Find current selection index
+            current_idx = 0
+            for i, (fid, fname, _) in enumerate(options):
+                if fid == current_id:
+                    current_idx = i
+                    break
+
+            selected_idx = st.selectbox(
+                "마스터 파일",
+                range(len(options)),
+                index=current_idx,
+                format_func=lambda i: options[i][2],
+                key="cloud_master_select",
+            )
+
+            selected_id = options[selected_idx][0]
+            selected_name = options[selected_idx][1]
+
+            col_apply, col_reset = st.columns(2)
+            with col_apply:
+                if selected_id != current_id:
+                    if st.button("이 파일로 변경", type="primary", key="btn_apply_master"):
+                        set_master_file_override(selected_id, selected_name)
+                        st.success(f"마스터 파일 변경됨: {selected_name}")
+                        st.rerun()
+
+            with col_reset:
+                if is_override:
+                    if st.button("기본값으로 복원", key="btn_reset_master"):
+                        clear_master_file_override()
+                        st.success("기본 마스터 파일로 복원됨")
+                        st.rerun()
+        else:
+            st.caption("Drive 폴더에서 xlsx 파일을 찾을 수 없습니다.")
+
+        # Other Drive IDs (read-only)
+        st.divider()
+        st.markdown("##### 기타 Drive 파일 ID")
+        st.caption("Streamlit Secrets에서 관리됩니다.")
+        try:
             file_ids = get_drive_file_ids()
             for key, val in file_ids.items():
-                st.text_input(key, value=val or "", disabled=True, key=f"drive_id_{key}")
+                if key != "master_file_id":
+                    st.text_input(key, value=val or "", disabled=True, key=f"drive_id_{key}")
         except Exception:
-            st.info("Drive 설정이 아직 구성되지 않았습니다.")
+            pass
 
         return
 

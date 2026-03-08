@@ -16,7 +16,7 @@ from dashboard.utils import (
     today_str, count_completed, load_progress, STAGES,
     load_settings, render_stage_badge,
 )
-from dashboard.drive_service import is_cloud
+from dashboard.drive_service import is_cloud, load_master_override_on_start
 
 st.set_page_config(
     page_title="DoK Workflow",
@@ -391,6 +391,10 @@ st.markdown("""
 if "target_date" not in st.session_state:
     st.session_state.target_date = datetime.date.today()
 
+
+# --- Load persisted master file override (cloud mode) ---
+if is_cloud():
+    load_master_override_on_start()
 
 # --- Sidebar ---
 with st.sidebar:

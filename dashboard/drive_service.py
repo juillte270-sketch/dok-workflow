@@ -116,21 +116,169 @@ def get_drive_file_ids() -> dict:
         return {}
 
 
+def get_effective_master_file_id() -> str:
+    """Get the active master file ID (override > secrets default)."""
+    try:
+        import streamlit as st
+        override = st.session_state.get("master_file_id_override")
+        if override:
+            return override
+    except Exception:
+        pass
+
+    file_ids = get_drive_file_ids()
+    file_id = file_ids.get("master_file_id")
+    if not file_id:
+        raise ValueError("master_file_id not configured in secrets [drive] section")
+    return file_id
+
+
+def set_master_file_override(file_id: str, file_name: str = ""):
+    """Set master file override (session state + Drive config for persistence)."""
+    try:
+        import streamlit as st
+        st.session_state["master_file_id_override"] = file_id
+        st.session_state["master_file_name_override"] = file_name
+    except Exception:
+        pass
+
+    # Persist to Drive config
+    try:
+        _save_master_config(file_id, file_name)
+    except Exception as e:
+        logger.warning(f"Failed to persist master config: {e}")
+
+
+def clear_master_file_override():
+    """Clear override, revert to secrets default."""
+    try:
+        import streamlit as st
+        st.session_state.pop("master_file_id_override", None)
+        st.session_state.pop("master_file_name_override", None)
+    except Exception:
+        pass
+
+    try:
+        _save_master_config("", "")
+    except Exception:
+        pass
+
+
+def load_master_override_on_start():
+    """Load persisted master override into session state (call once on app start)."""
+    try:
+        import streamlit as st
+        if "master_file_id_override" in st.session_state:
+            return  # Already loaded
+
+        config = _load_master_config()
+        fid = config.get("master_file_id")
+        if fid:
+            st.session_state["master_file_id_override"] = fid
+            st.session_state["master_file_name_override"] = config.get("master_file_name", "")
+    except Exception:
+        pass
+
+
+def _save_master_config(file_id: str, file_name: str):
+    """Save master file selection to Drive config."""
+    folder_id = _get_progress_folder_id()
+    filename = "master_config.json"
+    service = get_drive_service()
+
+    query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+    results = service.files().list(q=query, fields="files(id)", pageSize=1).execute()
+    existing = results.get("files", [])
+
+    data = {"master_file_id": file_id, "master_file_name": file_name}
+    tmp_path = os.path.join(tempfile.gettempdir(), filename)
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        import json
+        json.dump(data, f, ensure_ascii=False)
+
+    from googleapiclient.http import MediaFileUpload
+    media = MediaFileUpload(tmp_path, mimetype="application/json")
+
+    if existing:
+        service.files().update(fileId=existing[0]["id"], media_body=media).execute()
+    else:
+        file_meta = {"name": filename, "parents": [folder_id]}
+        service.files().create(body=file_meta, media_body=media, fields="id").execute()
+
+
+def _load_master_config() -> dict:
+    """Load master file selection from Drive config."""
+    try:
+        folder_id = _get_progress_folder_id()
+        filename = "master_config.json"
+        service = get_drive_service()
+
+        query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+        results = service.files().list(q=query, fields="files(id)", pageSize=1).execute()
+        files = results.get("files", [])
+
+        if not files:
+            return {}
+
+        from googleapiclient.http import MediaIoBaseDownload
+        import io, json
+
+        request = service.files().get_media(fileId=files[0]["id"])
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        buffer.seek(0)
+        return json.loads(buffer.read().decode("utf-8"))
+    except Exception:
+        return {}
+
+
+def list_xlsx_in_master_folder() -> list:
+    """List xlsx files in the same folder as the master file."""
+    service = get_drive_service()
+    file_ids = get_drive_file_ids()
+    master_id = file_ids.get("master_file_id")
+    if not master_id:
+        return []
+
+    # Get parent folder of master file
+    meta = service.files().get(fileId=master_id, fields="parents").execute()
+    parent_id = meta.get("parents", [None])[0]
+    if not parent_id:
+        return []
+
+    query = (
+        f"'{parent_id}' in parents "
+        f"and mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' "
+        f"and trashed = false"
+    )
+    results = service.files().list(
+        q=query,
+        fields="files(id, name, modifiedTime, size)",
+        orderBy="modifiedTime desc",
+        pageSize=20,
+    ).execute()
+
+    return results.get("files", [])
+
+
 def download_master_file() -> str:
     """Download master file from Drive to a temp path. Returns the temp file path."""
     service = get_drive_service()
-    file_ids = get_drive_file_ids()
-    file_id = file_ids.get("master_file_id")
-
-    if not file_id:
-        raise ValueError("master_file_id not configured in secrets [drive] section")
+    file_id = get_effective_master_file_id()
 
     from googleapiclient.http import MediaIoBaseDownload
     import io
 
+    # Get actual filename from Drive
+    meta = service.files().get(fileId=file_id, fields="name").execute()
+    filename = meta.get("name", "도크발주관리데이터.xlsx")
+
     request = service.files().get_media(fileId=file_id)
     tmp_dir = tempfile.gettempdir()
-    tmp_path = os.path.join(tmp_dir, "도크발주관리데이터.xlsx")
+    tmp_path = os.path.join(tmp_dir, filename)
 
     fh = io.FileIO(tmp_path, "wb")
     downloader = MediaIoBaseDownload(fh, request)
@@ -147,11 +295,7 @@ def download_master_file() -> str:
 def upload_master_file(local_path: str) -> str:
     """Upload modified master file back to Drive. Returns the file ID."""
     service = get_drive_service()
-    file_ids = get_drive_file_ids()
-    file_id = file_ids.get("master_file_id")
-
-    if not file_id:
-        raise ValueError("master_file_id not configured in secrets [drive] section")
+    file_id = get_effective_master_file_id()
 
     from googleapiclient.http import MediaFileUpload
 
@@ -423,14 +567,11 @@ def check_drive_connection() -> tuple:
         return True, "로컬 모드 (Google Drive File Stream)"
 
     try:
-        file_ids = get_drive_file_ids()
-        if not file_ids.get("master_file_id"):
-            return False, "master_file_id가 secrets에 설정되지 않았습니다."
+        file_id = get_effective_master_file_id()
 
         service = get_drive_service()
-        # Try to get master file metadata
         file_meta = service.files().get(
-            fileId=file_ids["master_file_id"],
+            fileId=file_id,
             fields="id, name, modifiedTime, size",
         ).execute()
 
