@@ -3,6 +3,12 @@ import sys
 import os
 import argparse
 
+# Windows cp949 인코딩 에러 방지 — 식봄 검색 결과에 이모지/특수문자 포함됨
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # Configuration
 USERNAME = "juillte@naver.com"
 PASSWORD = "Tfe7c1p4!!"

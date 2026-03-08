@@ -249,6 +249,8 @@ def build_delivery_data(date_str, processed_orders_path):
             "driverName": None,
             "status": "pending",
             "items": items,
+            "startedAt": None,
+            "arrivedAt": None,
             "completedAt": None,
             "photoUrl": None,
             "signatureUrl": None,

@@ -13,6 +13,12 @@ import time
 import sys
 import os
 
+# Windows cp949 인코딩 에러 방지 — 식봄 검색 결과에 이모지/특수문자 포함됨
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 from fetch_foodspring_prices import FoodspringScraper
 
@@ -732,8 +738,24 @@ def fill_sikbom_prices(master_file, target_date):
             print(f"Propagated to {propagated} duplicate rows")
 
             print(f"\nSaving to {master_file}...")
-            wb.save(master_file)
-            print("Done.")
+            for attempt in range(1, 6):
+                try:
+                    wb.save(master_file)
+                    print("Done.")
+                    break
+                except PermissionError:
+                    if attempt < 5:
+                        print(f"  File locked, retrying in 3s... (attempt {attempt}/5)")
+                        time.sleep(3)
+                    else:
+                        # 임시 파일에 저장
+                        tmp_path = os.path.join(os.environ.get('PUBLIC', 'C:\\Users\\Public'),
+                                                'Documents', 'ESTsoft', 'CreatorTemp',
+                                                os.path.basename(master_file).replace('.xlsx', '_sikbom.xlsx'))
+                        os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+                        wb.save(tmp_path)
+                        print(f"  Saved to temp: {tmp_path}")
+                        print(f"  Close the master file and copy manually.")
         else:
             print("\nNo updates made.")
 
