@@ -179,7 +179,7 @@ def wait_for_nexacro(page, timeout=30):
 def login_helo(page):
     """HELO 로그인 (nexacro JS API — 검증된 경로)"""
     print(f"Navigating to {HELO_URL}...", flush=True)
-    page.goto(HELO_URL, wait_until="networkidle", timeout=60000)
+    page.goto(HELO_URL, wait_until="domcontentloaded", timeout=60000)
 
     if not wait_for_nexacro(page, 60):
         return False
