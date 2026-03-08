@@ -697,6 +697,12 @@ def fill_helo_data(master_file, target_date, match_results, dry_run=False):
 
 def scrape_helo(target_date, extract_only=False, dry_run=False, master_file=DEFAULT_MASTER):
     """메인: HELO 스크래핑 → 재고시트 2차출고 입력"""
+    # Streamlit Cloud에서는 HELO 접속 불가 (내부망/IP 제한)
+    if os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE") == "1":
+        print("HELO 스크래핑은 로컬 환경에서만 실행 가능합니다. "
+              "(동원 HELO는 내부망/IP 제한으로 Cloud 접속 불가)", flush=True)
+        return None
+
     pw = None
     browser = None
     page = None
