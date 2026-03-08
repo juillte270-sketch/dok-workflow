@@ -17,9 +17,14 @@ def _is_streamlit_cloud() -> bool:
 def _setup_browser_path():
     """Streamlit Cloud에서 브라우저 경로를 쓰기 가능한 위치로 설정."""
     if _is_streamlit_cloud():
-        browser_path = "/home/adminuser/.cache/ms-playwright"
-        os.environ["PLAYWRIGHT_BROWSERS_PATH"] = browser_path
-        os.makedirs(browser_path, exist_ok=True)
+        # /home/adminuser/.cache 가 권한 없을 수 있으므로 /tmp 사용
+        for candidate in ["/home/adminuser/.cache/ms-playwright", "/tmp/ms-playwright"]:
+            try:
+                os.makedirs(candidate, exist_ok=True)
+                os.environ["PLAYWRIGHT_BROWSERS_PATH"] = candidate
+                return
+            except PermissionError:
+                continue
 
 
 def ensure_browser():
