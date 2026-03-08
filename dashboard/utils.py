@@ -551,27 +551,38 @@ def check_master_file(settings: dict = None) -> Tuple[bool, str]:
     # Windows: check for Excel lock file (~$filename.xlsx)
     lock_file = p.parent / f"~${p.name}"
     if lock_file.exists():
-        return False, "마스터 파일이 엑셀에서 열려 있습니다. 엑셀을 닫아주세요."
+        # 잠금파일이 오래된 경우 (엑셀 비정상 종료로 남은 잔여 파일) → 무시
+        try:
+            lock_age = time.time() - lock_file.stat().st_mtime
+            if lock_age > 60:
+                # 60초 이상 된 잠금파일은 잔여 파일로 간주
+                try:
+                    lock_file.unlink()
+                except OSError:
+                    pass
+            else:
+                return False, "마스터 파일이 엑셀에서 열려 있습니다. 엑셀을 닫아주세요."
+        except OSError:
+            pass
 
     try:
-        # Try opening for write to verify not locked
-        with open(p, "r+b") as f:
-            f.seek(0)
+        # 읽기 모드로만 확인 (Drive 동기화 중 쓰기 잠금 오탐 방지)
+        with open(p, "rb") as f:
             f.read(4)
         return True, "OK"
     except PermissionError:
-        # Google Drive sync can cause transient locks — retry once
-        import time
-        time.sleep(2)
-        lock_file2 = p.parent / f"~${p.name}"
-        if lock_file2.exists():
-            return False, "마스터 파일이 엑셀에서 열려 있습니다. 엑셀을 닫아주세요."
+        # Drive 동기화 일시적 잠금 → 재시도
+        import time as _time
+        _time.sleep(1)
         try:
-            with open(p, "r+b") as f:
+            with open(p, "rb") as f:
                 f.read(4)
             return True, "OK"
         except PermissionError:
-            return False, "마스터 파일이 잠겨 있습니다. 엑셀 또는 Drive 동기화 완료 후 재시도하세요."
+            # 여전히 잠겨있으면 잠금파일 재확인
+            if lock_file.exists():
+                return False, "마스터 파일이 엑셀에서 열려 있습니다. 엑셀을 닫아주세요."
+            return False, "마스터 파일이 일시적으로 잠겨 있습니다. 잠시 후 다시 시도하세요."
     except Exception as e:
         return False, f"파일 접근 오류: {e}"
 
