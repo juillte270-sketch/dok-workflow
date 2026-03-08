@@ -236,21 +236,15 @@ def _load_master_config() -> dict:
 
 
 def list_xlsx_in_master_folder() -> list:
-    """List xlsx files in the same folder as the master file."""
+    """List xlsx files in the 매입단가_자료 folder (price_data_folder_id)."""
     service = get_drive_service()
     file_ids = get_drive_file_ids()
-    master_id = file_ids.get("master_file_id")
-    if not master_id:
-        return []
-
-    # Get parent folder of master file
-    meta = service.files().get(fileId=master_id, fields="parents").execute()
-    parent_id = meta.get("parents", [None])[0]
-    if not parent_id:
+    folder_id = file_ids.get("price_data_folder_id")
+    if not folder_id:
         return []
 
     query = (
-        f"'{parent_id}' in parents "
+        f"'{folder_id}' in parents "
         f"and mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' "
         f"and trashed = false"
     )
