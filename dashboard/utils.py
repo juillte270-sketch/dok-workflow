@@ -45,6 +45,19 @@ DEFAULT_MASTER = r"G:\내 드라이브\1. 도크_주문 명세서\0. 매입단�
 
 
 # --------------- Date utilities ---------------
+# 근무 시간대: 저녁 출근 ~ 다음날 새벽 퇴근
+# WORK_DAY_CUTOFF_HOUR 이전이면 전날을 근무일(작업 날짜)로 인식
+WORK_DAY_CUTOFF_HOUR = 10  # 오전 10시
+
+
+def work_date() -> datetime.date:
+    """근무일 기준 날짜. 오전 10시 이전이면 전날을 반환."""
+    now = now_kst()
+    if now.hour < WORK_DAY_CUTOFF_HOUR:
+        return (now - datetime.timedelta(days=1)).date()
+    return now.date()
+
+
 def today_str(fmt: str = "%Y-%m-%d") -> str:
     return now_kst().strftime(fmt)
 
@@ -218,6 +231,14 @@ STAGES = [
         "requires": [],
         "script": "generate_daily_report.py",
         "page": "13. 일일보고서",
+    },
+    {
+        "id": "stage_delivery_report",
+        "name": "배송관리 엑셀",
+        "icon": "13",
+        "requires": [],
+        "script": "generate_delivery_report.py",
+        "page": "12. 배송 관리",
     },
 ]
 

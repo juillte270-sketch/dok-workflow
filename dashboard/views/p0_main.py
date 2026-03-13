@@ -352,6 +352,7 @@ def _get_stage_args(stage_id, date_str, settings, master_override=None):
         "stage7_fill": ["--date", date_str, "--master-file", master],
         "stage8_final": ["--date", date_str, "--master", master],
         "stage_report": ["--date", date_str],
+        "stage_delivery_report": ["--date", date_str.replace("-", ""), "--master", master],
     }
     return args_map.get(stage_id, [])
 
@@ -388,7 +389,7 @@ def _run_single_stage(stage_id, date_str, settings):
             st.toast(f"📋 {sync_msg}")
 
     # Stages that modify master file get a backup
-    modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill"}
+    modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill", "stage_delivery_report"}
     needs_backup = stage_id in modifying_stages
 
     mark_stage(stage_id, "running", date_str=date_str)
@@ -464,7 +465,7 @@ def _run_batch_morning(date_str, settings):
 
     # Resolve master path once for the entire batch
     master_path, from_drive = resolve_master_path(settings)
-    modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill"}
+    modifying_stages = {"stage2_order", "stage3_price", "stage3_sikbom", "stage5_auction", "stage4_helo", "stage_receipt", "stage7_fill", "stage_delivery_report"}
 
     progress_bar = st.progress(0, text="일괄 실행 준비 중...")
     total = len(batch_stages)

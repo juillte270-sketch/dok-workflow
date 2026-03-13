@@ -678,7 +678,7 @@ def _ts_to_datetime(ts):
     return None
 
 
-def _render_report_tab(date_compact: str):
+def _render_report_tab(date_compact: str, get_date_str=None):
     """리포트 탭: 기사별 배송 성과 분석."""
 
     fb = _get_firebase()
@@ -894,6 +894,67 @@ def _render_report_tab(date_compact: str):
             unsafe_allow_html=True,
         )
 
+    # ── 배송관리 엑셀 입력 ──
+    st.divider()
+    st.subheader("배송관리 엑셀 입력")
+    st.caption("마스터 파일 '배송관리' 시트에 기사별 상세 배송 데이터 입력")
+
+    from dashboard.utils import (
+        mark_stage, load_settings, run_script_safe, format_elapsed,
+        render_stage_badge, load_progress, resolve_master_path, sync_master_back,
+    )
+    from dashboard.drive_service import is_cloud
+
+    date_str = get_date_str()
+    settings = load_settings()
+    progress = load_progress(date_str)
+    stage_id = "stage_delivery_report"
+    stage_info = progress.get(stage_id, {})
+    stage_status = stage_info.get("status", "pending")
+
+    # 현재 상태 표시
+    if stage_status == "completed":
+        ts = stage_info.get("timestamp", "")
+        ts_short = ts[11:16] if len(ts) > 16 else ""
+        st.success(f"완료 {ts_short}")
+    elif stage_status == "failed":
+        st.error("이전 실행 실패")
+
+    col_a, col_b = st.columns([2, 1])
+    with col_b:
+        excel_dry = st.checkbox("미리보기만", value=False, key="delivery_excel_dry")
+    with col_a:
+        btn_label = "엑셀 입력" if not excel_dry else "미리보기"
+        if st.button(btn_label, type="primary", key="btn_delivery_excel"):
+            master_path, from_drive = resolve_master_path(settings)
+            args = ["--date", date_compact, "--master", str(master_path)]
+            if excel_dry:
+                args.append("--dry-run")
+            else:
+                mark_stage(stage_id, "running", date_str=date_str)
+            with st.spinner("배송관리 엑셀 입력 중..."):
+                success, stdout, stderr, elapsed = run_script_safe(
+                    "generate_delivery_report.py", args, timeout=60,
+                    backup=not excel_dry,
+                )
+            if success:
+                if not excel_dry:
+                    if from_drive:
+                        try:
+                            sync_master_back(master_path)
+                        except Exception as e:
+                            st.warning(f"Drive 업로드 실패: {e}")
+                    mark_stage(stage_id, "completed", {"elapsed": elapsed}, date_str=date_str)
+                st.toast(f"배송관리 입력 완료 ({format_elapsed(elapsed)})")
+                if stdout:
+                    st.code(stdout[-2000:], language="text")
+            else:
+                if not excel_dry:
+                    mark_stage(stage_id, "failed", {"error": (stderr or "")[-500:]}, date_str=date_str)
+                st.error("배송관리 입력 실패")
+                st.code(stderr[-2000:] if stderr else "Error", language="text")
+            st.rerun()
+
 
 # ─── Tab 5: 업로드 (기존 유지) ───────────────────────────────
 
@@ -965,7 +1026,7 @@ def render(get_date_str, get_date_compact):
         _render_tracking_tab(date_compact)
 
     with tab4:
-        _render_report_tab(date_compact)
+        _render_report_tab(date_compact, get_date_str)
 
     with tab5:
         _render_upload_tab(date_compact)
